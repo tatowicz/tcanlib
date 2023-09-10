@@ -6,7 +6,7 @@ CFLAGS = -Wall -g
 OBJS = ctp.o test_ctp.o
 
 # Target executable
-TARGET = ctp_test
+TARGET = ctp_test.out
 
 all: $(TARGET)
 
