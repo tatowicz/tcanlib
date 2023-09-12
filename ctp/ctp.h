@@ -32,8 +32,7 @@ typedef enum {
 
 // Define CTP error codes
 typedef enum {
-    CTP_MESSAGE_TIMEOUT,
-    CTP_CHECKSUM_ERROR
+    CTP_MESSAGE_TIMEOUT
 } CTP_ErrorCode;
 
 // CTP frame structure
@@ -43,14 +42,14 @@ typedef struct {
     union {
         struct {
             uint8_t length;
-            uint8_t data[CAN_MAX_DATA_LENGTH - 1];
+            uint8_t data[CAN_MAX_DATA_LENGTH - 1]; // 1 byte for length
         } start;
         struct {
             uint8_t sequence;
-            uint8_t data[CAN_MAX_DATA_LENGTH - 1];
+            uint8_t data[CAN_MAX_DATA_LENGTH - 1]; // 1 byte for sequence number
         } consecutive;
         struct {
-            uint8_t data[CAN_MAX_DATA_LENGTH];
+            uint8_t data[CAN_MAX_DATA_LENGTH]; 
         } end;
         struct {
             CTP_FlowControl control;

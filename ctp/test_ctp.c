@@ -92,7 +92,7 @@ bool test_send() {
     assert(last_sent_id == test_frame.id);
     assert(last_sent_data[0] == test_frame.type);
     assert(last_sent_data[1] == test_frame.payload.start.length);
-    assert(last_sent_data[2] == 0xAA || last_sent_data[3] == 0xBB || last_sent_data[4] == 0xCC);
+    assert(last_sent_data[2] == 0xAA && last_sent_data[3] == 0xBB && last_sent_data[4] == 0xCC);
 
     return true;
 }
@@ -117,21 +117,6 @@ bool test_receive() {
     assert(received_frame.payload.start.data[1] == 0xBB);
     assert(received_frame.payload.start.data[2] == 0xCC);
 
-    return true;
-}
-
-bool test_process() {
-    
-    CTP_Frame test_frame;
-    test_frame.type = CTP_CONSECUTIVE_FRAME;
-    test_frame.payload.consecutive.sequence = 5;
-    memcpy(test_frame.payload.consecutive.data, (uint8_t[]){0xDE, 0xAD, 0xBE, 0xEF, 0x11, 0x22, 0x33}, 7);
-
-    // This function doesn't return a value. Instead, we'll check its output.
-    ctp_receive_frame(&test_frame);
-    
-    // In a real test, you'd capture stdout and check if the output is correct.
-    // For this example, we'll assume the function is correct.
     return true;
 }
 
@@ -174,6 +159,9 @@ bool test_processing_with_variable_ids() {
 
     ctp_receive_frame(&frame1);
     ctp_receive_frame(&frame2);
+
+    assert(frame1.type == CTP_START_FRAME);
+    assert(frame2.type == CTP_START_FRAME);
 
     assert(memcmp(frame1.payload.start.data, (uint8_t[]){0x11, 0x22, 0x33}, frame1.payload.start.length) == 0);
     assert(memcmp(frame2.payload.start.data, (uint8_t[]){0x44, 0x55, 0x66}, frame2.payload.start.length) == 0);
@@ -246,13 +234,13 @@ bool test_ctp_receive_data() {
     uint32_t test_id = 123;
 
     // Mock receiving a START frame
-    enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, 03, 0xAA, 0xBB, 0xCC, 0x7F, 0x00, 0x00}, 8);
+    enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, 03, 0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x00}, 8);
 
     // Mock receiving a CONSECUTIVE frame
     enqueue_mock_frame(test_id, (uint8_t[]){CTP_CONSECUTIVE_FRAME, 1, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33}, 8);
 
     // Mock receiving an END frame
-    enqueue_mock_frame(test_id, (uint8_t[]){CTP_END_FRAME, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00}, 8);
+    enqueue_mock_frame(test_id, (uint8_t[]){CTP_END_FRAME, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x11}, 8);
 
     // Buffer to hold received data
     uint8_t received_data[MAX_BUFFER_SIZE];
@@ -262,18 +250,13 @@ bool test_ctp_receive_data() {
     bool success = ctp_receive_data(test_id, received_data, &received_length);
 
     // Validate the result
-    assert(!success);
-    assert(received_length == 11); // 3 bytes from START frame + 7 bytes from CONSECUTIVE frame + 1 byte from END frame
+    assert(success == true);
+    assert(received_length == 16); // 3 bytes from start + 6 bytes from consecutive + 7 bytes from end
 
-    uint8_t expected_data[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55};
-    for (uint32_t i = 0; i < received_length; i++) {
-        if (received_data[i] != expected_data[i]) {
-            printf("Received data byte at index %u is incorrect.\n", i);
-            return false;
-        }
-    }
+    uint8_t expected_data[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+                               0x77, 0x88, 0x99, 0x11};
+    assert(memcmp(received_data, expected_data, received_length) == 0);
 
-    printf("Test passed successfully.\n");
     return true;
 }
 
@@ -290,24 +273,6 @@ int main() {
     } else {
         printf("Test Receive: FAILED\n");
     }
-
-    if (test_process()) {
-        printf("Test Process: PASSED\n");
-    } else {
-        printf("Test Process: FAILED\n");
-    }
-
-    //if (test_send_with_flow_control()) {
-    //    printf("Test Send with Flow Control: PASSED\n");
-    //} else {
-    //    printf("Test Send with Flow Control: FAILED\n");
-    //}
-
-    //if (test_receive_with_flow_control()) {
-    //    printf("Test Receive with Flow Control: PASSED\n");
-    //} else {
-    //    printf("Test Receive with Flow Control: FAILED\n");
-    //}
 
     if (test_processing_with_variable_ids()) {
         printf("Test Processing with Variable IDs: PASSED\n");
@@ -334,9 +299,9 @@ int main() {
     }
 
     if (test_ctp_receive_data()) {
-        printf("Test Ctp receive PASSED.\n");
+        printf("Test Receive Data PASSED.\n");
     } else {
-        printf("Test Ctp receive FAILED.\n");
+        printf("Test Receive Data FAILED.\n");
     }
 
     return 0;

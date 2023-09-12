@@ -22,15 +22,6 @@ uint8_t get_expected_sequence_number() {
     return expected_sequence_number;
 }
 
-bool send_flow_control_command(uint32_t id, CTP_FlowControl control) {
-    CTP_Frame flow_control_frame;
-    flow_control_frame.id = id;
-    flow_control_frame.type = CTP_FLOW_CONTROL_FRAME;
-    flow_control_frame.payload.flowControl.control = control;
-    ctp_send_frame(&flow_control_frame);
-    return true;
-}
-
 void ctp_send_frame(const CTP_Frame *frame) {
     // Convert the CTP frame to raw CAN data
     uint8_t can_data[CAN_MAX_DATA_LENGTH];
@@ -71,14 +62,14 @@ void ctp_process_frame(const CTP_Frame *frame) {
             break;
         case CTP_CONSECUTIVE_FRAME:
             printf("Received CONSECUTIVE FRAME with sequence %u and data: ", frame->payload.consecutive.sequence);
-            for (int i = 0; i < CAN_MAX_DATA_LENGTH - 1; i++) {
+            for (int i = 0; i < CAN_MAX_DATA_LENGTH - 2; i++) {
                 printf("%02X ", frame->payload.consecutive.data[i]);
             }
             printf("\n");
             break;
         case CTP_END_FRAME:
             printf("Received END FRAME with data: ");
-            for (int i = 0; i < CAN_MAX_DATA_LENGTH; i++) {
+            for (int i = 0; i < CAN_MAX_DATA_LENGTH - 1; i++) {
                 printf("%02X ", frame->payload.end.data[i]);
             }
             printf("\n");
@@ -99,19 +90,19 @@ bool ctp_receive_frame(CTP_Frame *frame) {
         frame->type = can_data[0];
         switch (frame->type) {
             case CTP_START_FRAME:
-                expected_sequence_number = 0;
                 frame->payload.start.length = can_data[1];
                 memcpy(frame->payload.start.data, &can_data[2], frame->payload.start.length);
+                expected_sequence_number = 1; // Next expected sequence number
                 break;
             
             case CTP_CONSECUTIVE_FRAME: 
+                frame->payload.consecutive.sequence = can_data[1];
                 if (frame->payload.consecutive.sequence == expected_sequence_number) {
                     expected_sequence_number++;  // Increment for the next expected frame
                     if (expected_sequence_number > MAX_SEQUENCE_NUMBER) { 
                         expected_sequence_number = 0;  // Wrap around
                     }
 
-                    frame->payload.consecutive.sequence = can_data[1];
                     memcpy(frame->payload.consecutive.data, &can_data[2], CAN_MAX_DATA_LENGTH - 2);
                 } else {
                     printf("[DEBUG] Received unexpected sequence number: %u\n", frame->payload.consecutive.sequence);
@@ -166,7 +157,7 @@ bool ctp_receive_data(uint32_t expected_id, uint8_t* buffer, uint32_t* received_
                         return false;
                     }
                     memcpy(&buffer[*received_length], frame.payload.consecutive.data, CAN_MAX_DATA_LENGTH - 1);
-                    *received_length += CAN_MAX_DATA_LENGTH - 1;
+                    *received_length += CAN_MAX_DATA_LENGTH - 2;
                     expected_sequence_number++;
                     break;
 
@@ -176,7 +167,7 @@ bool ctp_receive_data(uint32_t expected_id, uint8_t* buffer, uint32_t* received_
                         return false;
                     }
                     memcpy(&buffer[*received_length], frame.payload.end.data, CAN_MAX_DATA_LENGTH);
-                    *received_length += CAN_MAX_DATA_LENGTH;
+                    *received_length += CAN_MAX_DATA_LENGTH - 1;
                     return true; // Completed reception
 
                 default:
@@ -185,6 +176,7 @@ bool ctp_receive_data(uint32_t expected_id, uint8_t* buffer, uint32_t* received_
             }
         }
     }
+
     return false; // Failed to receive the complete data or an error occurred
 }
 
@@ -199,7 +191,7 @@ void ctp_send(uint32_t id, const uint8_t *data, uint8_t length) {
     frame.payload.start.length = start_frame_length;
     memcpy(frame.payload.start.data, data, start_frame_length);
     ctp_send_frame(&frame);
-    waiting_for_flow_control = true;
+    //waiting_for_flow_control = true;
 
     uint32_t bytes_sent = start_frame_length;
     uint8_t sequence_number = 0;
