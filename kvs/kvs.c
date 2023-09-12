@@ -63,7 +63,6 @@ void free_table(HashTable* table) {
     free(table);
 }
 
-
 void resize_table(HashTable *table) {
     int old_size = table->size;
     table->size *= 2;  // Double the size

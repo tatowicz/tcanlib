@@ -45,9 +45,9 @@ void ctp_send_frame(const CTP_Frame *frame) {
             can_data[1] = frame->payload.consecutive.sequence;
             memcpy(&can_data[2], frame->payload.consecutive.data, CAN_MAX_DATA_LENGTH - 2);
             break;
-        case CTP_FLOW_CONTROL_FRAME:
-            can_data[1] = frame->payload.flowControl.control;
-            break;
+        //case CTP_FLOW_CONTROL_FRAME:
+        //    can_data[1] = frame->payload.flowControl.control;
+        //    break;
         case CTP_END_FRAME:
             memcpy(&can_data[1], frame->payload.end.data, CAN_MAX_DATA_LENGTH - 1);
             break;
@@ -57,6 +57,38 @@ void ctp_send_frame(const CTP_Frame *frame) {
     
     // Send using the mock driver function
     send_can_message(frame->id, can_data, CAN_MAX_DATA_LENGTH);
+}
+
+void ctp_process_frame(const CTP_Frame *frame) {
+    // Process the received CTP frame
+     switch (frame->type) {
+        case CTP_START_FRAME:
+            printf("Received START FRAME with data: ");
+            for (int i = 0; i < frame->payload.start.length; i++) {
+                printf("%02X ", frame->payload.start.data[i]);
+            }
+            printf("\n");
+            break;
+        case CTP_CONSECUTIVE_FRAME:
+            printf("Received CONSECUTIVE FRAME with sequence %u and data: ", frame->payload.consecutive.sequence);
+            for (int i = 0; i < CAN_MAX_DATA_LENGTH - 1; i++) {
+                printf("%02X ", frame->payload.consecutive.data[i]);
+            }
+            printf("\n");
+            break;
+        case CTP_END_FRAME:
+            printf("Received END FRAME with data: ");
+            for (int i = 0; i < CAN_MAX_DATA_LENGTH; i++) {
+                printf("%02X ", frame->payload.end.data[i]);
+            }
+            printf("\n");
+            break;
+        case CTP_FLOW_CONTROL_FRAME:
+            printf("Received FLOW CONTROL FRAME with control code: %u\n", frame->payload.flowControl.control);
+            break;
+        default:
+            break;
+    }
 }
 
 bool ctp_receive_frame(CTP_Frame *frame) {
@@ -90,10 +122,12 @@ bool ctp_receive_frame(CTP_Frame *frame) {
                 memcpy(frame->payload.end.data, &can_data[1], CAN_MAX_DATA_LENGTH - 1);
                 break;
 
-            case CTP_FLOW_CONTROL_FRAME:
-                frame->payload.flowControl.control = can_data[1];
-                break;
+            //case CTP_FLOW_CONTROL_FRAME:
+            //    frame->payload.flowControl.control = can_data[1];
+            //    break;
+
             default:
+                printf("[DEBUG] Received unknown frame type: %u\n", frame->type);
                 break;
         }
 
@@ -104,36 +138,54 @@ bool ctp_receive_frame(CTP_Frame *frame) {
     return false;
 }
 
-void ctp_process_frame(const CTP_Frame *frame) {
-    // Process the received CTP frame
-    switch (frame->type) {
-        case CTP_START_FRAME:
-            printf("Received START FRAME with data: ");
-            for (int i = 0; i < frame->payload.start.length; i++) {
-                printf("%02X ", frame->payload.start.data[i]);
+bool ctp_receive_data(uint32_t expected_id, uint8_t* buffer, uint32_t* received_length) {
+    CTP_Frame frame;
+    uint8_t expected_sequence_number = 0;
+    *received_length = 0;
+
+    while (ctp_receive_frame(&frame)) {
+        if (frame.id == expected_id) {
+            switch (frame.type) {
+                case CTP_START_FRAME:
+                    if (frame.payload.start.length > (MAX_BUFFER_SIZE - *received_length)) {
+                        // Handle buffer overflow error
+                        return false;
+                    }
+                    memcpy(&buffer[*received_length], frame.payload.start.data, frame.payload.start.length);
+                    *received_length += frame.payload.start.length;
+                    expected_sequence_number = 1; // Next expected sequence number
+                    break;
+
+                case CTP_CONSECUTIVE_FRAME:
+                    if (frame.payload.consecutive.sequence != expected_sequence_number) {
+                        // Handle out of order sequence error
+                        return false;
+                    }
+                    if ((CAN_MAX_DATA_LENGTH - 1) > (MAX_BUFFER_SIZE - *received_length)) {
+                        // Handle buffer overflow error
+                        return false;
+                    }
+                    memcpy(&buffer[*received_length], frame.payload.consecutive.data, CAN_MAX_DATA_LENGTH - 1);
+                    *received_length += CAN_MAX_DATA_LENGTH - 1;
+                    expected_sequence_number++;
+                    break;
+
+                case CTP_END_FRAME:
+                    if (CAN_MAX_DATA_LENGTH > (MAX_BUFFER_SIZE - *received_length)) {
+                        // Handle buffer overflow error
+                        return false;
+                    }
+                    memcpy(&buffer[*received_length], frame.payload.end.data, CAN_MAX_DATA_LENGTH);
+                    *received_length += CAN_MAX_DATA_LENGTH;
+                    return true; // Completed reception
+
+                default:
+                    // Unexpected frame type
+                    return false;
             }
-            printf("\n");
-            break;
-        case CTP_CONSECUTIVE_FRAME:
-            printf("Received CONSECUTIVE FRAME with sequence %u and data: ", frame->payload.consecutive.sequence);
-            for (int i = 0; i < CAN_MAX_DATA_LENGTH - 1; i++) {
-                printf("%02X ", frame->payload.consecutive.data[i]);
-            }
-            printf("\n");
-            break;
-        case CTP_END_FRAME:
-            printf("Received END FRAME with data: ");
-            for (int i = 0; i < CAN_MAX_DATA_LENGTH; i++) {
-                printf("%02X ", frame->payload.end.data[i]);
-            }
-            printf("\n");
-            break;
-        case CTP_FLOW_CONTROL_FRAME:
-            printf("Received FLOW CONTROL FRAME with control code: %u\n", frame->payload.flowControl.control);
-            break;
-        default:
-            break;
+        }
     }
+    return false; // Failed to receive the complete data or an error occurred
 }
 
 void ctp_send(uint32_t id, const uint8_t *data, uint8_t length) {
@@ -151,27 +203,26 @@ void ctp_send(uint32_t id, const uint8_t *data, uint8_t length) {
 
     uint32_t bytes_sent = start_frame_length;
     uint8_t sequence_number = 0;
-    int timeout_counter = 1000;  // Arbitrary number, represents the max number of loops we wait for flow control
+    //int timeout_counter = 1000;  // Arbitrary number, represents the max number of loops we wait for flow control
 
     while (bytes_sent < length) {
-        while (waiting_for_flow_control && timeout_counter > 0) {
-            if (ctp_receive_frame(&frame) && frame.type == CTP_FLOW_CONTROL_FRAME && frame.id == id) {
-                if (frame.payload.flowControl.control == CTP_CONTINUE_SENDING) {
-                    waiting_for_flow_control = false;
-                } else if (frame.payload.flowControl.control == CTP_WAIT) {
-                    // You could add a delay here if you want
-                    continue;
-                } else if (frame.payload.flowControl.control == CTP_ABORT) {
-                    return;  // Abort the transmission
-                }
-            }
-            timeout_counter--;
-        }
+        //while (waiting_for_flow_control && timeout_counter > 0) {
+        //    if (ctp_receive_frame(&frame) && frame.type == CTP_FLOW_CONTROL_FRAME && frame.id == id) {
+        //        if (frame.payload.flowControl.control == CTP_CONTINUE_SENDING) {
+        //            waiting_for_flow_control = false;
+        //        } else if (frame.payload.flowControl.control == CTP_WAIT) {
+        //            continue;
+        //        } else if (frame.payload.flowControl.control == CTP_ABORT) {
+        //            return;  // Abort the transmission
+        //        }
+        //    }
+        //    timeout_counter--;
+        //}
 
-        if (timeout_counter == 0) {
-            // Handle timeout scenario
-            return;
-        }
+        //if (timeout_counter == 0) {
+        //    // Handle timeout scenario
+        //    return;
+        //}
 
         uint8_t bytes_left = length - bytes_sent;
 
@@ -187,10 +238,10 @@ void ctp_send(uint32_t id, const uint8_t *data, uint8_t length) {
         
         ctp_send_frame(&frame);
         bytes_sent += bytes_left;
-        waiting_for_flow_control = true;  // Wait for flow control again after sending a frame
-        timeout_counter = 1000;  // Reset the timeout counter for the next wait
+        //waiting_for_flow_control = true;  // Wait for flow control again after sending a frame
+        //timeout_counter = 1000;  // Reset the timeout counter for the next wait
     }
 
-    waiting_for_flow_control = false;
+    //waiting_for_flow_control = false;
 }
 

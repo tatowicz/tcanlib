@@ -6,7 +6,13 @@
 // Define maximum CAN data length
 #define CAN_MAX_DATA_LENGTH 8
 #define MAX_SEQUENCE_NUMBER 255
+#define MAX_BUFFER_SIZE 1024
 
+
+typedef struct {
+    uint8_t data[MAX_BUFFER_SIZE];
+    uint32_t length;
+} DataBuffer;
 
 // Define CTP frame types
 typedef enum {
@@ -62,6 +68,7 @@ void ctp_send_frame(const CTP_Frame *frame);
 bool ctp_receive_frame(CTP_Frame *frame);
 void ctp_process_frame(const CTP_Frame *frame);
 void ctp_send(uint32_t id, const uint8_t *data, uint8_t length);
+bool ctp_receive_data(uint32_t expected_id, uint8_t* buffer, uint32_t* received_length);
 bool get_flow_control_state();
 void set_expected_sequence_number(uint8_t sequence_number);
 uint8_t get_expected_sequence_number();
