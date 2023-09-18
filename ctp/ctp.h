@@ -8,11 +8,10 @@
 #define MAX_SEQUENCE_NUMBER 255
 #define MAX_BUFFER_SIZE 1024
 
-
-typedef struct {
-    uint8_t data[MAX_BUFFER_SIZE];
-    uint32_t length;
-} DataBuffer;
+#define CTP_START_DATA_SIZE 6
+#define CTP_CONSECUTIVE_DATA_LENGTH 6
+#define CTP_END_DATA_LENGTH 7
+#define CTP_ERROR_DATA_LENGTH 7
 
 // Define CTP frame types
 typedef enum {
@@ -32,7 +31,10 @@ typedef enum {
 
 // Define CTP error codes
 typedef enum {
-    CTP_MESSAGE_TIMEOUT
+    CTP_MESSAGE_TIMEOUT,
+    CTP_INVALID_SEQUENCE_NUMBER,
+    CTP_INVALID_FRAME_TYPE,
+    CTP_INVALID_FRAME_LENGTH
 } CTP_ErrorCode;
 
 // CTP frame structure
@@ -41,32 +43,34 @@ typedef struct {
     CTP_FrameType type;
     union {
         struct {
-            uint8_t length;
-            uint8_t data[CAN_MAX_DATA_LENGTH - 1]; // 1 byte for length
+            uint8_t frame_len;                  // Length of Start Frame
+            uint8_t payload_len;                // Length of the whole message
+            uint8_t data[CTP_START_DATA_SIZE];  // 1 byte for length
         } start;
         struct {
             uint8_t sequence;
-            uint8_t data[CAN_MAX_DATA_LENGTH - 1]; // 1 byte for sequence number
+            uint8_t data[CTP_CONSECUTIVE_DATA_LENGTH]; // 1 byte for sequence number
         } consecutive;
         struct {
-            uint8_t data[CAN_MAX_DATA_LENGTH]; 
+            uint8_t bytes_left;                 // Number of to send in end frame
+            uint8_t data[CTP_END_DATA_LENGTH]; 
         } end;
         struct {
             CTP_FlowControl control;
         } flowControl;
         struct {
             CTP_ErrorCode errorCode;
+            uint8_t data[CTP_ERROR_DATA_LENGTH];
         } error;
     } payload;
 } CTP_Frame;
 
 
-
 // Protocol interface functions
 void ctp_send_frame(const CTP_Frame *frame);
-bool ctp_receive_frame(CTP_Frame *frame);
+bool ctp_receive_frame(uint8_t expected_sequence_number, CTP_Frame *frame);
 void ctp_process_frame(const CTP_Frame *frame);
-void ctp_send(uint32_t id, const uint8_t *data, uint8_t length);
+uint32_t ctp_send(uint32_t id, uint8_t *data, uint32_t length);
 bool ctp_receive_data(uint32_t expected_id, uint8_t* buffer, uint32_t* received_length);
 bool get_flow_control_state();
 void set_expected_sequence_number(uint8_t sequence_number);
