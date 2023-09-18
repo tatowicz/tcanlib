@@ -6,15 +6,13 @@
 
 
 
-
-
 #define RESPONSE_BUFFER_SIZE 1024
 
 uint8_t response_buffer[RESPONSE_BUFFER_SIZE];
 
 uint32_t current_security_level = SECURITY_LEVEL_LOCKED;
 
-// Mocked error codes database
+// error codes database
 ErrorCodeInfo error_codes_db[MAX_ERROR_CODES];
 uint32_t num_error_codes = 0;
 
