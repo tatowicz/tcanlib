@@ -5,7 +5,6 @@
 #include "sha256.h"
 
 
-
 // SHA-256 constants table (first 32 bits of the fractional parts of the cube roots of the first 64 prime numbers)
 static const uint32_t K[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
@@ -182,46 +181,3 @@ void sha256_to_hex_string(const uint8_t hash[32], char *hex_str) {
     hex_str[64] = '\0';  // Null terminate the string
 }
 
-void test_sha256_incremental() {
-    char hex_str[65];
-    uint8_t hash1[32];
-    uint8_t hash2[32];
-    const char *test_data = "Hello, World!";
-    const char *part1 = "Hello, ";
-    const char *part2 = "World!";
-    int i;
-
-    // Hash data in one go
-    sha256_compute((const uint8_t *)test_data, strlen(test_data), hash1);
-
-    // Hash data in parts
-    SHA256_CTX ctx;
-    sha256_init(&ctx);
-    sha256_update(&ctx, (const uint8_t *)part1, strlen(part1));
-    sha256_update(&ctx, (const uint8_t *)part2, strlen(part2));
-    sha256_finalize(&ctx, hash2);
-
-    // Compare the hashes
-    int are_equal = 1;
-    for (i = 0; i < 32; i++) {
-        if (hash1[i] != hash2[i]) {
-            are_equal = 0;
-            break;
-        }
-    }
-
-    if (are_equal) {
-        printf("Test passed! Hashes are identical.\n");
-    } else {
-        printf("Test failed! Hashes are different.\n");
-    }
-
-    sha256_to_hex_string(hash1, hex_str);
-    printf("Input: %s\n", test_data);
-    printf("Hash: %s\n", hex_str);
-}
-
-int main() {
-    test_sha256_incremental();
-    return 0;
-}
