@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "sha256.h"
+
+
+
 // SHA-256 constants table (first 32 bits of the fractional parts of the cube roots of the first 64 prime numbers)
 static const uint32_t K[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
@@ -22,12 +26,6 @@ static const uint32_t K[64] = {
     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
-// Initial hash values (first 32 bits of the fractional parts of the square roots of the first eight prime numbers)
-static uint32_t H[8] = {
-    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-    0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-};
-
 // Logical functions and operations used in SHA-256
 #define CH(x,y,z) ((x & y) ^ (~x & z))
 #define MAJ(x,y,z) ((x & y) ^ (x & z) ^ (y & z))
@@ -38,8 +36,23 @@ static uint32_t H[8] = {
 #define BIGSIG0(x) (ROTR(x, 2) ^ ROTR(x, 13) ^ ROTR(x, 22))
 #define BIGSIG1(x) (ROTR(x, 6) ^ ROTR(x, 11) ^ ROTR(x, 25))
 
+
+void sha256_init(SHA256_CTX *ctx) {
+    ctx->datalen = 0; 
+    ctx->bitlen = 0;
+    // Initialize state values (Based on SHA-256 specifications)
+    ctx->state[0] = 0x6a09e667;
+    ctx->state[1] = 0xbb67ae85;
+    ctx->state[2] = 0x3c6ef372;
+    ctx->state[3] = 0xa54ff53a;
+    ctx->state[4] = 0x510e527f;
+    ctx->state[5] = 0x9b05688c;
+    ctx->state[6] = 0x1f83d9ab;
+    ctx->state[7] = 0x5be0cd19;
+}
+
 // Main SHA-256 transformation
-void sha256_transform(const uint8_t data[64]) {
+void sha256_transform(const uint8_t data[64], uint32_t state[8]) {
     uint32_t W[64];
     uint32_t a, b, c, d, e, f, g, h, T1, T2;
     int t;
@@ -53,8 +66,8 @@ void sha256_transform(const uint8_t data[64]) {
     }
 
     // Initialize working variables with current hash value
-    a = H[0]; b = H[1]; c = H[2]; d = H[3];
-    e = H[4]; f = H[5]; g = H[6]; h = H[7];
+    a = state[0]; b = state[1]; c = state[2]; d = state[3];
+    e = state[4]; f = state[5]; g = state[6]; h = state[7];
 
     // Main loop
     for (t = 0; t < 64; t++) {
@@ -65,8 +78,8 @@ void sha256_transform(const uint8_t data[64]) {
     }
 
     // Add the compressed chunk to the current hash value
-    H[0] += a; H[1] += b; H[2] += c; H[3] += d;
-    H[4] += e; H[5] += f; H[6] += g; H[7] += h;
+    state[0] += a; state[1] += b; state[2] += c; state[3] += d;
+    state[4] += e; state[5] += f; state[6] += g; state[7] += h;
 }
 
 void sha256_pad(uint8_t *data, uint64_t data_len, uint8_t *padded_data) {
@@ -81,31 +94,134 @@ void sha256_pad(uint8_t *data, uint64_t data_len, uint8_t *padded_data) {
     }
 }
 
-void sha256_compute(const uint8_t *data, uint64_t data_len) {
-    uint8_t padded_data[((data_len + 8 + 64) & ~((uint64_t)63)) - 8];
-    sha256_pad(data, data_len, padded_data);
-    
-    size_t num_chunks = (data_len + 8 + 64) / 64;
-    for (size_t i = 0; i < num_chunks; i++) {
-        sha256_transform(padded_data + i * 64, H);
+void sha256_update(SHA256_CTX *ctx, const uint8_t data[], size_t len) {
+    size_t i;
+
+    // If there's leftover data from the previous update, try to form a full block
+    while(ctx->datalen > 0 && len > 0) {
+        ctx->data[ctx->datalen] = data[0];
+        ctx->datalen++;
+        data++;
+        len--;
+
+        // If we have a full block, process it
+        if(ctx->datalen == 64) {
+            sha256_transform(ctx->data, ctx->state);
+            ctx->bitlen += 512;  // Update the bit count by 64 bytes * 8
+            ctx->datalen = 0;  // Reset the data length
+        }
+    }
+
+    // Process full blocks directly from the input data
+    while(len >= 64) {
+        sha256_transform(data, ctx->state);
+        ctx->bitlen += 512;  // Update the bit count by 64 bytes * 8
+        data += 64;
+        len -= 64;
+    }
+
+    // Buffer any remaining data for the next update
+    for(i = 0; i < len; i++) {
+        ctx->data[ctx->datalen] = data[i];
+        ctx->datalen++;
     }
 }
 
-void sha256_to_hex_string(char *hex_str) {
-    for (int i = 0; i < 8; i++) {
-        sprintf(hex_str + i * 8, "%08x", H[i]);
+void sha256_finalize(SHA256_CTX *ctx, uint8_t hash[]) {
+    uint32_t i;
+
+    // Determine padding bytes
+    i = ctx->datalen;
+    if (ctx->datalen < 56) {
+        ctx->data[i++] = 0x80;  // Append the 1 bit
+        while (i < 56) {
+            ctx->data[i++] = 0x00;  // Append zeros
+        }
+    } else {
+        ctx->data[i++] = 0x80;  // Append the 1 bit
+        while (i < 64) {
+            ctx->data[i++] = 0x00;  // Append zeros
+        }
+        sha256_transform(ctx->data, ctx->state);  // Process this block
+        memset(ctx->data, 0, 56);  // Zero out data
     }
+
+    // Append the total bit length (big endian)
+    ctx->bitlen += ctx->datalen * 8;
+    ctx->data[63] = ctx->bitlen;
+    ctx->data[62] = ctx->bitlen >> 8;
+    ctx->data[61] = ctx->bitlen >> 16;
+    ctx->data[60] = ctx->bitlen >> 24;
+    ctx->data[59] = ctx->bitlen >> 32;
+    ctx->data[58] = ctx->bitlen >> 40;
+    ctx->data[57] = ctx->bitlen >> 48;
+    ctx->data[56] = ctx->bitlen >> 56;
+    
+    sha256_transform(ctx->data, ctx->state);  // Process the final block
+
+    // Store the final hash values in the output hash
+    for (i = 0; i < 8; i++) {
+        hash[i*4] = (ctx->state[i] >> 24) & 0xFF;
+        hash[i*4 + 1] = (ctx->state[i] >> 16) & 0xFF;
+        hash[i*4 + 2] = (ctx->state[i] >> 8) & 0xFF;
+        hash[i*4 + 3] = ctx->state[i] & 0xFF;
+    }
+}
+
+void sha256_compute(const uint8_t *data, uint64_t data_len, uint8_t hash[]) {
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
+    sha256_update(&ctx, data, data_len);
+    sha256_finalize(&ctx, hash);
+}
+
+void sha256_to_hex_string(const uint8_t hash[32], char *hex_str) {
+    for (int i = 0; i < 32; i++) {
+        sprintf(hex_str + i * 2, "%02x", hash[i]);
+    }
+    hex_str[64] = '\0';  // Null terminate the string
+}
+
+void test_sha256_incremental() {
+    char hex_str[65];
+    uint8_t hash1[32];
+    uint8_t hash2[32];
+    const char *test_data = "Hello, World!";
+    const char *part1 = "Hello, ";
+    const char *part2 = "World!";
+    int i;
+
+    // Hash data in one go
+    sha256_compute((const uint8_t *)test_data, strlen(test_data), hash1);
+
+    // Hash data in parts
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
+    sha256_update(&ctx, (const uint8_t *)part1, strlen(part1));
+    sha256_update(&ctx, (const uint8_t *)part2, strlen(part2));
+    sha256_finalize(&ctx, hash2);
+
+    // Compare the hashes
+    int are_equal = 1;
+    for (i = 0; i < 32; i++) {
+        if (hash1[i] != hash2[i]) {
+            are_equal = 0;
+            break;
+        }
+    }
+
+    if (are_equal) {
+        printf("Test passed! Hashes are identical.\n");
+    } else {
+        printf("Test failed! Hashes are different.\n");
+    }
+
+    sha256_to_hex_string(hash1, hex_str);
+    printf("Input: %s\n", test_data);
+    printf("Hash: %s\n", hex_str);
 }
 
 int main() {
-    const char *data = "this is a test";
-
-    char hex_str[65] = {0};
-
-    sha256_compute((const uint8_t *)data, strlen(data));
-    sha256_to_hex_string(hex_str);
-
-    printf("SHA-256 hash: %s\n", hex_str);
-
+    test_sha256_incremental();
     return 0;
 }
