@@ -6,6 +6,8 @@
 #include "ctp.h"
 
 
+// TODO: Print logs
+// TODO: Send more error frames
 
 void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
     // Convert the CTP frame to raw CAN data

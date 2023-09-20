@@ -7,6 +7,9 @@
 
 #define LOAD_FACTOR_THRESHOLD 0.7
 
+// TODO: Maybe remove the dynamic memory or make a malloc override 
+// TODO: Remove load and save functions 
+
 bool should_resize(HashTable *table) {
     return (double)table->count / table->size > LOAD_FACTOR_THRESHOLD;
 }

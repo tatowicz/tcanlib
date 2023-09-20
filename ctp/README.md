@@ -25,20 +25,21 @@ To send a sequence of data:
 
 ```c
 uint32_t id = 456;
-uint8_t data[] = {0xAA, 0xBB, 0xCC, 0xDD};
+uint8_t data[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
+    0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
+    0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99};
 ctp_send(id, data, sizeof(data));
 ```
 
 ### Receiving Data
 
-The `ctp_receive_frame` function is used to receive a frame:
+The `ctp_receive` function is used to receive a frame:
 
 ```c
 uint32_t id = 456;
 uint8_t received_data[MAX_BUFFER_SIZE];
-uint32_t received_length = 0;
 
-bool success = ctp_receive_data(id, received_data, &received_length);
+uint32_t data_len = ctp_receive(received_data, sizeof(received_data));
 ```
 
 ### Error Handling
@@ -46,8 +47,6 @@ bool success = ctp_receive_data(id, received_data, &received_length);
 If an error occurs, an ERROR_FRAME is sent with the appropriate error code.
 
 
-
----
 
 ## Testing
 
@@ -57,7 +56,6 @@ The codebase includes various test functions to validate the functionality of th
 $ make test
 ```
 
----
 
 ## License
 
