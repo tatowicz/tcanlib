@@ -6,7 +6,6 @@
 // Define maximum CAN data length
 #define CAN_MAX_DATA_LENGTH 8
 #define MAX_SEQUENCE_NUMBER 255
-#define MAX_BUFFER_SIZE 1024
 
 #define CTP_START_DATA_SIZE 6
 #define CTP_CONSECUTIVE_DATA_LENGTH 6
@@ -43,7 +42,6 @@ typedef struct {
     CTP_FrameType type;
     union {
         struct {
-            uint8_t frame_len;                  // Length of Start Frame
             uint8_t payload_len;                // Length of the whole message
             uint8_t data[CTP_START_DATA_SIZE];  // 1 byte for length
         } start;
@@ -52,7 +50,6 @@ typedef struct {
             uint8_t data[CTP_CONSECUTIVE_DATA_LENGTH]; // 1 byte for sequence number
         } consecutive;
         struct {
-            uint8_t bytes_left;                 // Number of to send in end frame
             uint8_t data[CTP_END_DATA_LENGTH]; 
         } end;
         struct {
@@ -67,14 +64,10 @@ typedef struct {
 
 
 // Protocol interface functions
-void ctp_send_frame(const CTP_Frame *frame);
-bool ctp_receive_frame(uint8_t expected_sequence_number, CTP_Frame *frame);
+void ctp_send_frame(const CTP_Frame *frame, uint8_t len);
 void ctp_process_frame(const CTP_Frame *frame);
 uint32_t ctp_send(uint32_t id, uint8_t *data, uint32_t length);
-bool ctp_receive_data(uint32_t expected_id, uint8_t* buffer, uint32_t* received_length);
-bool get_flow_control_state();
-void set_expected_sequence_number(uint8_t sequence_number);
-uint8_t get_expected_sequence_number();
+int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size);
 
 // CAN driver interface functions, this functions must be implemented by the user
 // and is used by the protocol to send and receive CAN messages

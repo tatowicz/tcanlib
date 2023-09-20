@@ -7,7 +7,7 @@
 
 
 
-void ctp_send_frame(const CTP_Frame *frame) {
+void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
     // Convert the CTP frame to raw CAN data
     uint8_t can_data[CAN_MAX_DATA_LENGTH] = {0};
     uint8_t length = 0;
@@ -16,17 +16,17 @@ void ctp_send_frame(const CTP_Frame *frame) {
     switch (frame->type) {
         case CTP_START_FRAME:
             can_data[1] = frame->payload.start.payload_len;
-            memcpy(&can_data[2], frame->payload.start.data, frame->payload.start.frame_len);
-            length = frame->payload.start.frame_len + 2; 
+            memcpy(&can_data[2], frame->payload.start.data, len);
+            length = len + 2; 
             break;
         case CTP_CONSECUTIVE_FRAME:
             can_data[1] = frame->payload.consecutive.sequence;
-            memcpy(&can_data[2], frame->payload.consecutive.data, CTP_CONSECUTIVE_DATA_LENGTH);
-            length = CTP_CONSECUTIVE_DATA_LENGTH + 2;
+            memcpy(&can_data[2], frame->payload.consecutive.data, len);
+            length = len + 2;
             break;
         case CTP_END_FRAME:
-            memcpy(&can_data[1], frame->payload.end.data, frame->payload.end.bytes_left);
-            length = frame->payload.end.bytes_left + 1;
+            memcpy(&can_data[1], frame->payload.end.data, len);
+            length = len + 1;
             break;
         case CTP_ERROR_FRAME:
             can_data[1] = frame->payload.error.errorCode;
@@ -44,7 +44,7 @@ void ctp_process_frame(const CTP_Frame *frame) {
      switch (frame->type) {
         case CTP_START_FRAME:
             printf("Received START FRAME with length %u and data: ", frame->payload.start.payload_len);
-            for (int i = 0; i < frame->payload.start.frame_len; i++) {
+            for (int i = 0; i < CTP_START_DATA_SIZE; i++) {
                 printf("%02X ", frame->payload.start.data[i]);
             }
             printf("\n");
@@ -58,7 +58,7 @@ void ctp_process_frame(const CTP_Frame *frame) {
             break;
         case CTP_END_FRAME:
             printf("Received END FRAME with data: ");
-            for (int i = 0; i < frame->payload.end.bytes_left; i++) {
+            for (int i = 0; i < CTP_END_DATA_LENGTH; i++) {
                 printf("%02X ", frame->payload.end.data[i]);
             }
             printf("\n");
@@ -71,103 +71,81 @@ void ctp_process_frame(const CTP_Frame *frame) {
     }
 }
 
-bool ctp_receive_frame(uint8_t expected_sequence_number, CTP_Frame *frame) {
-    uint8_t can_data[CAN_MAX_DATA_LENGTH];
+int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
+    uint8_t can_data[CAN_MAX_DATA_LENGTH] = {0};
     uint8_t length;
-    uint8_t start_frame_length;
-    
-    if (receive_can_message(&frame->id, can_data, &length)) {
-        frame->type = can_data[0];
-        switch (frame->type) {
-            case CTP_START_FRAME:
-                start_frame_length = (can_data[1] > (CTP_START_DATA_SIZE)) ? (CTP_START_DATA_SIZE) : can_data[1];
-                frame->payload.start.payload_len = can_data[1];
-                frame->payload.start.frame_len = start_frame_length;
-                memcpy(frame->payload.start.data, &can_data[2], start_frame_length);
-                expected_sequence_number = 1; // Next expected sequence number
-                break;
-            
-            case CTP_CONSECUTIVE_FRAME: 
-                frame->payload.consecutive.sequence = can_data[1];
-                if (frame->payload.consecutive.sequence == expected_sequence_number) {
-                    expected_sequence_number++;  // Increment for the next expected frame
-                    if (expected_sequence_number > MAX_SEQUENCE_NUMBER) { 
-                        expected_sequence_number = 0;  // Wrap around
-                    }
+    uint32_t received_length = 0;
+    uint8_t expected_sequence_number = 0;
+    uint32_t expected_total_length = 0;
+    bool start_frame_received = false;
+    uint32_t can_id;  
 
-                    memcpy(frame->payload.consecutive.data, &can_data[2], CTP_CONSECUTIVE_DATA_LENGTH);
-                } else {
-                    printf("[DEBUG] Received unexpected sequence number: %u\n", frame->payload.consecutive.sequence);
-                    return false;
-                }
-                break;
+    const uint32_t MAX_RETRIES = 1000;
+    uint32_t retry_count = 0;
 
-            case CTP_END_FRAME:
-                memcpy(frame->payload.end.data, &can_data[1], frame->payload.end.bytes_left);
-                break;
-
-            default:
-                printf("[DEBUG] Received unknown frame type: %u\n", frame->type);
-                break;
+    while (received_length < expected_total_length || !start_frame_received) {
+        if (!receive_can_message(&can_id, can_data, &length)) {
+            retry_count++;
+            if (retry_count >= MAX_RETRIES) {
+                return -1;  // Return error if max retry count is reached
+            }
+            continue;  // Keep trying until we get a message or reach max retries
         }
 
-        ctp_process_frame(frame);
-        return true;
-    }
-    
-    return false;
-}
+        // Reset retry count on successful reception
+        retry_count = 0;
 
-bool ctp_receive_data(uint32_t expected_id, uint8_t* buffer, uint32_t* received_length) {
-    CTP_Frame frame;
-    uint8_t expected_sequence_number = 0;
-    *received_length = 0;
+        if (!start_frame_received && can_data[0] == CTP_START_FRAME) {
+            expected_total_length = can_data[1];
+            if (expected_total_length > buffer_size) {
+                return -1;  // Error: buffer provided is not enough
+            }
 
-    while (ctp_receive_frame(expected_sequence_number, &frame)) {
-        if (frame.id == expected_id) {
-            switch (frame.type) {
-                case CTP_START_FRAME:
-                    if (frame.payload.start.payload_len > (MAX_BUFFER_SIZE - *received_length)) {
-                        // Handle buffer overflow error
-                        return false;
-                    }
-                    memcpy(&buffer[*received_length], frame.payload.start.data, frame.payload.start.frame_len);
-                    *received_length += frame.payload.start.frame_len;
-                    expected_sequence_number = 1; // Next expected sequence number
-                    break;
+            uint8_t start_frame_length = (can_data[1] > CTP_START_DATA_SIZE) ? CTP_START_DATA_SIZE : can_data[1];
+            memcpy(buffer, &can_data[2], start_frame_length);
+            received_length += start_frame_length;
+            expected_sequence_number = 1;
+            start_frame_received = true;
 
+            if (expected_total_length == start_frame_length) {
+                return received_length;  // Successfully received the full frame
+            }
+            
+            continue;
+        }
+
+        if (start_frame_received) {
+            switch (can_data[0]) {
                 case CTP_CONSECUTIVE_FRAME:
-                    if (frame.payload.consecutive.sequence != expected_sequence_number) {
-                        // Handle out of order sequence error
-                        return false;
+                    if (can_data[1] != expected_sequence_number) {
+                        return -1;  // Error: sequence mismatch
                     }
-                    if ((CTP_CONSECUTIVE_DATA_LENGTH) > (MAX_BUFFER_SIZE - *received_length)) {
-                        // Handle buffer overflow error
-                        return false;
+                    if ((received_length + CTP_CONSECUTIVE_DATA_LENGTH) > buffer_size) {
+                        return -1;  // Error: buffer overflow
                     }
-                    memcpy(&buffer[*received_length], frame.payload.consecutive.data, CTP_CONSECUTIVE_DATA_LENGTH);
-                    *received_length += CTP_CONSECUTIVE_DATA_LENGTH;
+                    memcpy(&buffer[received_length], &can_data[2], CTP_CONSECUTIVE_DATA_LENGTH);
+                    received_length += CTP_CONSECUTIVE_DATA_LENGTH;
                     expected_sequence_number++;
                     break;
 
                 case CTP_END_FRAME:
-                    if (CAN_MAX_DATA_LENGTH > (MAX_BUFFER_SIZE - *received_length)) {
-                        // Handle buffer overflow error
-                        return false;
+                    if ((received_length + CTP_END_DATA_LENGTH) > buffer_size) {
+                        return -1;  // Error: buffer overflow
                     }
-                    memcpy(&buffer[*received_length], frame.payload.end.data, frame.payload.end.bytes_left);
-                    *received_length += frame.payload.end.bytes_left;
-                    return true; // Completed reception
+                    memcpy(&buffer[received_length], &can_data[1], CTP_END_DATA_LENGTH);
+                    received_length += CTP_END_DATA_LENGTH;
+                    return received_length;  // Successfully received the full frame
 
                 default:
-                    // Unexpected frame type
-                    return false;
+                    // In case of unexpected frame type, keep trying
+                    break;
             }
         }
     }
 
-    return false;
+    return -1;  // Should not reach here unless there's an error
 }
+
 
 uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint8_t length) {
     CTP_Frame frame;
@@ -177,10 +155,9 @@ uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint8_t length) {
 
     // Set up and send the START frame
     frame.type = CTP_START_FRAME;
-    frame.payload.start.frame_len = start_frame_length;
     frame.payload.start.payload_len = length;
     memcpy(frame.payload.start.data, data, start_frame_length);
-    ctp_send_frame(&frame);
+    ctp_send_frame(&frame, start_frame_length);
 
     uint32_t bytes_sent = start_frame_length;
     uint8_t sequence_number = 0;
@@ -190,7 +167,6 @@ uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint8_t length) {
 
         if (bytes_left <= (CTP_END_DATA_LENGTH)) {
             frame.type = CTP_END_FRAME;
-            frame.payload.end.bytes_left = bytes_left;
             memcpy(frame.payload.end.data, data + bytes_sent, bytes_left);
         } else {
             frame.type = CTP_CONSECUTIVE_FRAME;
@@ -199,7 +175,7 @@ uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint8_t length) {
             bytes_left = CTP_CONSECUTIVE_DATA_LENGTH;
         }
         
-        ctp_send_frame(&frame);
+        ctp_send_frame(&frame, bytes_left);
         bytes_sent += bytes_left;
     }
 

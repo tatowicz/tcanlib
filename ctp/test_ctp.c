@@ -82,59 +82,17 @@ bool test_send() {
     test_frame.id = 123;
     test_frame.type = CTP_START_FRAME;
     test_frame.payload.start.payload_len = 3;
-    test_frame.payload.start.frame_len = 3;
     test_frame.payload.start.data[0] = 0xAA;
     test_frame.payload.start.data[1] = 0xBB;
     test_frame.payload.start.data[2] = 0xCC;
 
-    ctp_send_frame(&test_frame);
+    ctp_send_frame(&test_frame, 3);
 
     // Check if the driver_send_can_message function was called with the correct data
     assert(last_sent_id == test_frame.id);
     assert(last_sent_data[0] == test_frame.type);
     assert(last_sent_data[1] == test_frame.payload.start.payload_len);
     assert(last_sent_data[2] == 0xAA && last_sent_data[3] == 0xBB && last_sent_data[4] == 0xCC);
-
-    return true;
-}
-
-bool test_receive() {
-    CTP_Frame received_frame;
-
-    mock_frame_count = 0;
-    mock_frame_index = 0;
-
-    enqueue_mock_frame(123, (uint8_t[]){CTP_START_FRAME, 03, 0xAA, 0xBB, 0xCC, 0x7F, 0x00, 0x00}, 8);
-
-    // Simulate a received message for testing
-    assert(ctp_receive_frame(0, &received_frame));
-    
-    assert(received_frame.id == 123);
-
-    // Check if the received data matches what we sent in the mock driver function
-    assert(received_frame.type == CTP_START_FRAME);
-    assert(received_frame.payload.start.payload_len == 3);
-    assert(received_frame.payload.start.data[0] == 0xAA);
-    assert(received_frame.payload.start.data[1] == 0xBB);
-    assert(received_frame.payload.start.data[2] == 0xCC);
-
-    return true;
-}
-
-bool test_processing_with_variable_ids() {
-    CTP_Frame frame1, frame2;
-
-    enqueue_mock_frame(123, (uint8_t[]){CTP_START_FRAME, 03, 0x11, 0x22, 0x33, 0x7F, 0x00, 0x00}, 8);
-    enqueue_mock_frame(456, (uint8_t[]){CTP_START_FRAME, 03, 0x44, 0x55, 0x66, 0x7F, 0x00, 0x00}, 8);
-
-    ctp_receive_frame(0, &frame1);
-    ctp_receive_frame(0, &frame2);
-
-    assert(frame1.type == CTP_START_FRAME);
-    assert(frame2.type == CTP_START_FRAME);
-
-    assert(memcmp(frame1.payload.start.data, (uint8_t[]){0x11, 0x22, 0x33}, frame1.payload.start.payload_len) == 0);
-    assert(memcmp(frame2.payload.start.data, (uint8_t[]){0x44, 0x55, 0x66}, frame2.payload.start.payload_len) == 0);
 
     return true;
 }
@@ -200,41 +158,7 @@ bool test_send_with_end_frame() {
     return true;
 }
 
-bool test_receive_end_frame() {
-    mock_frame_count = 0;
-    mock_frame_index = 0;
-
-    // Set up a mock response for an END_FRAME
-    enqueue_mock_frame(123, (uint8_t[]){CTP_END_FRAME, 0xAA, 0xBB, 0xCC, 0x7F, 0x00, 0x00, 0x00}, 8);
-
-    CTP_Frame received_frame;
-    assert(ctp_receive_frame(0, &received_frame));
-
-    // Check if the received frame is an END_FRAME
-    assert(received_frame.type == CTP_END_FRAME);
-
-    return true;
-}
-
-bool test_unexpected_end_frame() {
-    // Reset state variables
-    mock_frame_count = 0;
-    mock_frame_index = 0;
-
-    // Set up a mock response for an END_FRAME
-    enqueue_mock_frame(123, (uint8_t[]){CTP_END_FRAME, 0xAA, 0xBB, 0xCC, 0x7F, 0x00, 0x00, 0x00}, 8);
-
-    CTP_Frame received_frame;
-    assert(ctp_receive_frame(5, &received_frame)); // Send a sequence number that is not 0
-
-    // Check if the received frame is an END_FRAME when we were expecting a CONSECUTIVE_FRAME
-    // This represents an error scenario
-    assert(received_frame.type == CTP_END_FRAME);
-    assert(5 == 5);
-    return true;
-}
-
-bool test_ctp_receive_data() {
+bool test_ctp_receive() {
     // Reset any global state
     mock_frame_count = 0;
     mock_frame_index = 0;
@@ -242,8 +166,16 @@ bool test_ctp_receive_data() {
     // Given ID for the test
     uint32_t test_id = 123;
 
+    uint8_t expected_data[] = {0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x00, 
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x11};
+
+    uint8_t len = sizeof(expected_data);
+
     // Mock receiving a START frame
-    enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, 3, 0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x00}, 8);
+    enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, len, 0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x00}, 8);
 
     // Mock receiving a CONSECUTIVE frame
     enqueue_mock_frame(test_id, (uint8_t[]){CTP_CONSECUTIVE_FRAME, 1, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33}, 8);
@@ -254,41 +186,49 @@ bool test_ctp_receive_data() {
     enqueue_mock_frame(test_id, (uint8_t[]){CTP_END_FRAME, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x11}, 8);
 
     // Buffer to hold received data
-    uint8_t received_data[MAX_BUFFER_SIZE];
-    uint32_t received_length = 0;
+    uint8_t received_data[1024];
 
     // Call the function
-    bool success = ctp_receive_data(test_id, received_data, &received_length);
+    uint32_t data_len = ctp_receive(received_data, sizeof(received_data));
 
-    // Validate the result
-    assert(success == true);
+    assert(data_len == sizeof(expected_data));
+    assert(memcmp(received_data, expected_data, data_len) == 0);
 
-    uint8_t expected_data[] = {0xAA, 0xBB, 0xCC, 
-                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 
-                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
-                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
-                               0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x11};
+    return true;
+}
 
-    assert(received_length == sizeof(expected_data));
-    assert(memcmp(received_data, expected_data, received_length) == 0);
+bool ctp_test_first_frame() {
+    mock_frame_count = 0;
+    mock_frame_index = 0;
 
+    uint32_t test_id = 123;
+    uint8_t received_data[16];
+    uint8_t expected_data[] = {0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x00};
+    uint8_t len2 = sizeof(expected_data);
+    enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, len2, 0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x00}, 8);
 
-    // Mock receiving a START frame
-    enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, 3, 0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x00}, 8);
-    enqueue_mock_frame(test_id, (uint8_t[]){CTP_END_FRAME, 0, 0, 0, 0, 0, 0, 0}, 1);
+    uint32_t data_len = ctp_receive(received_data, sizeof(received_data));
 
-    received_length = 0;
+    assert(data_len == sizeof(expected_data));
+    assert(memcmp(received_data, expected_data, data_len) == 0);
 
-    // Call the function
-    success = ctp_receive_data(test_id, received_data, &received_length);
+    return true;
+}
 
-    // Validate the result
-    assert(success == true);
+bool ctp_test_small_first_frame() {
+    mock_frame_count = 0;
+    mock_frame_index = 0;
 
-    uint8_t expected_data2[] = {0xAA, 0xBB, 0xCC};
+    uint32_t test_id = 123;
+    uint8_t received_data[16];
+    uint8_t expected_data[] = {0xAA, 0xBB, 0xCC};
+    uint8_t len2 = sizeof(expected_data);
+    enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, len2, 0xAA, 0xBB, 0xCC}, 5);
 
-    assert(received_length == sizeof(expected_data2));
-    assert(memcmp(received_data, expected_data, received_length) == 0);
+    uint32_t data_len = ctp_receive(received_data, sizeof(received_data));
+
+    assert(data_len == sizeof(expected_data));
+    assert(memcmp(received_data, expected_data, data_len) == 0);
 
     return true;
 }
@@ -301,37 +241,13 @@ int main() {
         printf("Test Send: FAILED\n");
     }
 
-    if (test_receive()) {
-        printf("Test Receive: PASSED\n");
-    } else {
-        printf("Test Receive: FAILED\n");
-    }
-
-    if (test_processing_with_variable_ids()) {
-        printf("Test Processing with Variable IDs: PASSED\n");
-    } else {
-        printf("Test Processing with Variable IDs: FAILED\n");
-    }
-
     if (test_send_with_end_frame()) {
         printf("Test Send with End Frame: PASSED\n");
     } else {
         printf("Test Send with End Frame: FAILED\n");
     }
 
-    if (test_receive_end_frame()) {
-        printf("Test Receive End Frame: PASSED\n");
-    } else {
-        printf("Test Receive End Frame: FAILED\n");
-    }
-
-    if (test_unexpected_end_frame()) {
-        printf("Test Unexpected End Frame: PASSED\n");
-    } else {
-        printf("Test Unexpected End Frame: FAILED\n");
-    }
-
-    if (test_ctp_receive_data()) {
+    if (test_ctp_receive()) {
         printf("Test Receive Data PASSED.\n");
     } else {
         printf("Test Receive Data FAILED.\n");
@@ -341,6 +257,18 @@ int main() {
         printf("Test Send with End Frame: PASSED\n");
     } else {
         printf("Test Send with End Frame: FAILED\n");
+    }
+
+    if (ctp_test_first_frame()) {
+        printf("Test First Frame: PASSED\n");
+    } else {
+        printf("Test First Frame: FAILED\n");
+    }
+
+    if(( ctp_test_small_first_frame())) {
+        printf("Test Small First Frame: PASSED\n");
+    } else {
+        printf("Test Small First Frame: FAILED\n");
     }
 
     return 0;
