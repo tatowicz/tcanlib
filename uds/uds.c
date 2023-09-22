@@ -1,16 +1,15 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "ctp.h"
 #include "uds.h"
 
 
-
-#define RESPONSE_BUFFER_SIZE 1024
-
-uint8_t response_buffer[RESPONSE_BUFFER_SIZE];
-
 uint32_t current_security_level = SECURITY_LEVEL_LOCKED;
+
+uint8_t response_buffer[1024];
 
 // error codes database
 ErrorCodeInfo error_codes_db[MAX_ERROR_CODES];
@@ -60,9 +59,17 @@ bool set_data_by_identifier(uint16_t identifier, const uint8_t* data, uint8_t da
     return false; // No space left in the database
 }
 
-void send_positive_response(uint8_t original_sid) {
+void send_positive_response(uint8_t original_sid, uint8_t* data, uint32_t data_length) {
     uint8_t response_sid = original_sid + SID_POS_RESPONSE;
     uint8_t response_data[1] = {response_sid};  // Normally, there might be additional data in a positive response
+
+    if (data == NULL || data_length == 0) {
+        // No data to send, just send the SID
+        ctp_send(RESPONSE_CAN_ID, response_data, 1);
+        return;
+    }
+
+    memcpy(response_data + 1, data, data_length);
     
     // Send the response using the CTP (CAN Transport Protocol) send function
     ctp_send(RESPONSE_CAN_ID, response_data, sizeof(response_data));
@@ -77,7 +84,7 @@ void send_negative_response(uint8_t original_sid, uint8_t error_code) {
 
 void send_response(uint16_t sid, uint8_t* data, uint32_t data_length) {
     // Check if data can fit in our buffer
-    if (data_length + 1 > RESPONSE_BUFFER_SIZE) {
+    if (data_length + 1 > 1024) {
         // Handle error - data too large to fit in buffer
         printf("Error: Data too large to fit in buffer.\n");
         return;
@@ -98,7 +105,7 @@ void handle_message(uint8_t sid, uint8_t* data, uint32_t data_length) {
             break;
 
         case SID_READ_DATA_BY_IDENTIFIER:
-            read_data_by_identifier(*((uint16_t*)data));
+            read_data_by_identifier(sid, data, data_length);
             break;
 
         case SID_WRITE_DATA_BY_ID:
@@ -160,7 +167,7 @@ void write_data_by_identifier(uint16_t identifier, uint8_t* data, uint32_t data_
         set_data_by_identifier(identifier, data, data_length);
 
         // Send a positive response
-        send_positive_response(SID_WRITE_DATA_BY_ID);
+        send_positive_response(SID_WRITE_DATA_BY_ID, NULL, 0);
     } else {
         // Identifier not found, send a negative response
         send_negative_response(SID_WRITE_DATA_BY_ID, ERROR_CODE_NOT_FOUND);
@@ -174,14 +181,14 @@ void routine_control(uint16_t routine_id) {
         execute_mock_routine(routine_id);
 
         // Send a positive response
-        send_positive_response(SID_ROUTINE_CONTROL);
+        send_positive_response(SID_ROUTINE_CONTROL, NULL, 0);
     } else {
         // Routine not recognized, send a negative response
         send_negative_response(SID_ROUTINE_CONTROL, ERROR_CODE_NOT_FOUND);
     }
 }
 
-void execute_mock_routine(uint8_t routine_id) {
+bool execute_mock_routine(uint8_t routine_id) {
     // Mock implementation of a routine.
     printf("Executing mock routine with ID: %02X\n", routine_id);
     // Simulate the execution of the routine. 
@@ -206,7 +213,7 @@ void request_download(uint8_t* file_data, uint32_t file_size) {
     store_file("file", file_data, file_size);
 
     // Send a positive response
-    send_positive_response(SID_REQUEST_DOWNLOAD);
+    send_positive_response(SID_REQUEST_DOWNLOAD, NULL, 0);
 }
 
 void store_file(const char* file_name, uint8_t* data, uint32_t size) {
@@ -217,7 +224,6 @@ void store_file(const char* file_name, uint8_t* data, uint32_t size) {
         printf("%02X ", data[i]);
     }
     printf("\n");
-    return true;
 }
 
 // This function populates the provided buffer with error codes from the system or device.
@@ -236,7 +242,7 @@ void read_error_code_information() {
     int codes = get_error_codes(error_codes_db, MAX_ERROR_CODES);
 
     // Send the error codes as a response (for simplicity, sending directly)
-    send_response(SID_READ_ERROR_CODE, error_codes_db, codes);
+    send_response(SID_READ_ERROR_CODE, (uint8_t*)error_codes_db, codes * sizeof(ErrorCodeInfo));
 }
 
 void system_reset_request() {
@@ -244,7 +250,7 @@ void system_reset_request() {
     mock_system_reset();
 
     // Send a positive response before resetting
-    send_positive_response(SID_SYSTEM_RESET);
+    send_positive_response(SID_SYSTEM_RESET, NULL, 0);
 }
 
 bool mock_system_reset() {
@@ -259,7 +265,7 @@ void session_control(uint8_t session_type) {
         current_session = session_type;
 
         // Send a positive response
-        send_positive_response(SID_SESSION_CONTROL);
+        send_positive_response(SID_SESSION_CONTROL, NULL, 0);
     } else {
         // Invalid session type, send a negative response
         send_negative_response(SID_SESSION_CONTROL, ERROR_CODE_INVALID_SESSION_TYPE);
@@ -274,17 +280,17 @@ void security_access(uint8_t sub_function, uint16_t data) {
     switch (sub_function) {
         case REQUEST_SEED:
             // Send seed to client
-            send_positive_response(SID_SECURITY_ACCESS, SECURITY_SEED);
+            send_positive_response(SID_SECURITY_ACCESS, SECURITY_SEED, sizeof(SECURITY_SEED));
             break;
 
         case SEND_KEY:
             if (current_security_level == SECURITY_LEVEL_UNLOCKED) {
                 // Already unlocked, send positive response
-                send_positive_response(SID_SECURITY_ACCESS);
+                send_positive_response(SID_SECURITY_ACCESS, NULL, 0);
             } else if (data == EXPECTED_KEY) {
                 // Correct key received, unlock security access
                 current_security_level = SECURITY_LEVEL_UNLOCKED;
-                send_positive_response(SID_SECURITY_ACCESS);
+                send_positive_response(SID_SECURITY_ACCESS, NULL, 0);
             } else {
                 // Incorrect key, send negative response
                 send_negative_response(SID_SECURITY_ACCESS, ERROR_INCORRECT_SECURITY_KEY);

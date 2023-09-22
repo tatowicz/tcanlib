@@ -83,9 +83,17 @@ typedef struct {
 } AppLayerMessage;
 
 
+void store_file(const char* file_name, uint8_t* data, uint32_t size);
+bool mock_system_reset();
+void read_error_code_information();
+bool execute_mock_routine(uint8_t routine_id);
+void request_download(uint8_t* file_data, uint32_t file_size);
+void routine_control(uint16_t routine_id);
+void write_data_by_identifier(uint16_t identifier, uint8_t* data, uint32_t data_length);
+void read_data_by_identifier(uint16_t identifier, uint8_t* response_data, uint8_t* response_length);
 bool get_data_by_identifier(uint16_t identifier, uint8_t* data, uint8_t* data_length);
 bool set_data_by_identifier(uint16_t identifier, const uint8_t* data, uint8_t data_length);
-void send_positive_response(uint8_t original_sid);
+void send_positive_response(uint8_t original_sid, uint8_t* data, uint32_t data_length);
 void send_negative_response(uint8_t original_sid, uint8_t error_code);
 void send_response(uint16_t sid, uint8_t* data, uint32_t data_length);
 void security_access(uint8_t sub_function, uint16_t data);

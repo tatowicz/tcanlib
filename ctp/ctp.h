@@ -2,6 +2,7 @@
 #define CTP_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // Define maximum CAN data length
 #define CAN_MAX_DATA_LENGTH 8

@@ -1,12 +1,10 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "ctp.h"
 
 
-// TODO: Print logs
 // TODO: Send more error frames
 
 void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {

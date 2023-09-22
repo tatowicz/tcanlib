@@ -22,5 +22,8 @@ test_ctp.o: test_ctp.c ctp.h
 test: $(TARGET)
 	./$(TARGET)
 
+lib: ctp.o
+	ar rcs libctp.a ctp.o
+
 clean:
 	rm -f $(OBJS) $(TARGET)
