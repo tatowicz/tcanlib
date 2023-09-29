@@ -5,7 +5,6 @@
 #include "ctp.h"
 
 
-// TODO: Send more error frames
 
 void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
     // Convert the CTP frame to raw CAN data
@@ -36,7 +35,7 @@ void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
             break;
     }
     
-    send_can_message(frame->id, can_data, length);
+    send_ctp_message(frame->id, can_data, length);
 }
 
 void ctp_process_frame(const CTP_Frame *frame) {
@@ -84,7 +83,7 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
     uint32_t retry_count = 0;
 
     while (received_length < expected_total_length || !start_frame_received) {
-        if (!receive_can_message(&can_id, can_data, &length)) {
+        if (!receive_ctp_message(&can_id, can_data, &length)) {
             retry_count++;
             if (retry_count >= MAX_RETRIES) {
                 return -1;  // Return error if max retry count is reached
@@ -185,7 +184,7 @@ uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint8_t length) {
 uint32_t ctp_send(uint32_t id, uint8_t *data, uint32_t length) {
     uint32_t bytes_sent = 0;
     while (length > 0) {
-        uint16_t chunk_length = (length > MAX_SEQUENCE_NUMBER) ? MAX_SEQUENCE_NUMBER : length;
+        uint16_t chunk_length = (length > (MAX_SEQUENCE_LEN)) ? (MAX_SEQUENCE_LEN) : length;
         bytes_sent += ctp_send_data_sequence(id, data, chunk_length);
         data += chunk_length;
         length -= chunk_length;

@@ -25,5 +25,8 @@ test: $(TARGET)
 lib: ctp.o
 	ar rcs libctp.a ctp.o
 
+cli: ctp_cli.o
+	$(CC) $(CFLAGS) -o cli ctp_cli.c ctp.c -L. -lPCBUSB
+
 clean:
 	rm -f $(OBJS) $(TARGET)

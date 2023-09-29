@@ -6,7 +6,7 @@
 
 // Define maximum CAN data length
 #define CAN_MAX_DATA_LENGTH 8
-#define MAX_SEQUENCE_NUMBER 255
+#define MAX_SEQUENCE_LEN 255
 
 #define CTP_START_DATA_SIZE 6
 #define CTP_CONSECUTIVE_DATA_LENGTH 6
@@ -43,7 +43,7 @@ typedef struct {
     CTP_FrameType type;
     union {
         struct {
-            uint8_t payload_len;                // Length of the whole message
+            uint8_t payload_len;                // Length of the whole data payload
             uint8_t data[CTP_START_DATA_SIZE];  // 1 byte for length
         } start;
         struct {
@@ -72,7 +72,7 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size);
 
 // CAN driver interface functions, this functions must be implemented by the user
 // and is used by the protocol to send and receive CAN messages
-bool send_can_message(uint32_t id, const uint8_t *data, uint8_t length);
-bool receive_can_message(uint32_t *id, uint8_t *data, uint8_t *length);
+bool send_ctp_message(uint32_t id, const uint8_t *data, uint8_t length);
+bool receive_ctp_message(uint32_t *id, uint8_t *data, uint8_t *length);
 
 #endif

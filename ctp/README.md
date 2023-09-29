@@ -56,6 +56,11 @@ The codebase includes various test functions to validate the functionality of th
 $ make test
 ```
 
+## TODO
+
+1. Support FD frames
+2. Add CTP level error frames for RX
+
 
 ## License
 
