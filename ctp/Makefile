@@ -25,8 +25,8 @@ test: $(TARGET)
 lib: ctp.o
 	ar rcs libctp.a ctp.o
 
-cli: ctp_cli.o
-	$(CC) $(CFLAGS) -o cli ctp_cli.c ctp.c -L. -lPCBUSB
+cli: 
+	$(CC) $(CFLAGS) -o cli ctp_cli.c ctp.c -I../drivers/PCAN -L../drivers/PCAN -lPCBUSB 
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET) cli ctp_cli.o

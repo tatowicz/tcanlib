@@ -32,6 +32,30 @@ bool send_ctp_message(uint32_t id, const uint8_t *data, uint8_t length) {
 }
 
 bool receive_ctp_message(uint32_t *id, uint8_t *data, uint8_t *length) {
+    TPCANMsg message;
+    TPCANStatus status;
+
+    status = CAN_Read(PCAN_CHANNEL, &message, NULL);
+
+    if (status == PCAN_ERROR_OK) {
+        if (!(message.MSGTYPE & PCAN_MESSAGE_STATUS)) {
+            printf("  - R ID:%4x LEN:%1x DATA:%02x %02x %02x %02x %02x %02x %02x %02x\n",
+                (int) message.ID, (int) message.LEN, (int) message.DATA[0],
+                (int) message.DATA[1], (int) message.DATA[2],
+                (int) message.DATA[3], (int) message.DATA[4],
+                (int) message.DATA[5], (int) message.DATA[6],
+                (int) message.DATA[7]);
+        }
+    } 
+    else if (status == PCAN_ERROR_QRCVEMPTY) {
+        printf("Receive queue is empty.\n");
+        return false;
+    } 
+    else {
+        printf("Error 0x%x\n", status);
+        return false;
+    }
+
     return true;
 }
 
