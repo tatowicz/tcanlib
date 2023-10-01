@@ -33,7 +33,7 @@ sha256_finalize(&ctx, hash);
 $ make test
 ```
 
-1. SHA245ShortMsg.rsp test vectors
+See `SHA245ShortMsg.rsp` test vectors
 
 ## TODO
 * Monte carlo testing
