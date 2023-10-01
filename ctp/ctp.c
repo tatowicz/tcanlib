@@ -38,38 +38,6 @@ void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
     send_ctp_message(frame->id, can_data, length);
 }
 
-void ctp_process_frame(const CTP_Frame *frame) {
-    // Process the received CTP frame
-     switch (frame->type) {
-        case CTP_START_FRAME:
-            printf("Received START FRAME with length %u and data: ", frame->payload.start.payload_len);
-            for (int i = 0; i < CTP_START_DATA_SIZE; i++) {
-                printf("%02X ", frame->payload.start.data[i]);
-            }
-            printf("\n");
-            break;
-        case CTP_CONSECUTIVE_FRAME:
-            printf("Received CONSECUTIVE FRAME with sequence %u and data: ", frame->payload.consecutive.sequence);
-            for (int i = 0; i < CTP_CONSECUTIVE_DATA_LENGTH; i++) {
-                printf("%02X ", frame->payload.consecutive.data[i]);
-            }
-            printf("\n");
-            break;
-        case CTP_END_FRAME:
-            printf("Received END FRAME with data: ");
-            for (int i = 0; i < CTP_END_DATA_LENGTH; i++) {
-                printf("%02X ", frame->payload.end.data[i]);
-            }
-            printf("\n");
-            break;
-        case CTP_FLOW_CONTROL_FRAME:
-            printf("Received FLOW CONTROL FRAME with control code: %u\n", frame->payload.flowControl.control);
-            break;
-        default:
-            break;
-    }
-}
-
 int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
     uint8_t can_data[CAN_MAX_DATA_LENGTH] = {0};
     uint8_t length;

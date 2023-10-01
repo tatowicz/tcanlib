@@ -70,7 +70,6 @@ $ make test
 ## TODO
 
 1. Support FD frames
-2. Add CTP level error frames for RX
 
 
 ## License

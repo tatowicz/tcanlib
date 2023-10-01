@@ -66,7 +66,6 @@ typedef struct {
 
 // Protocol interface functions
 void ctp_send_frame(const CTP_Frame *frame, uint8_t len);
-void ctp_process_frame(const CTP_Frame *frame);
 uint32_t ctp_send(uint32_t id, uint8_t *data, uint32_t length);
 int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size);
 
