@@ -954,73 +954,57 @@ void test_case_65() {
     }
 }
 
+
+
+void run_test(const char* hex_input, const char* hex_expected_output) {
+    size_t len = strlen(hex_input) / 2;
+    unsigned char input[len];
+    unsigned char expected_output[32];
+    unsigned char output[32];
+    char output_hex_string[65];
+    static int counter = 0;
+
+    hex_string_to_byte_array(hex_input, input);
+    hex_string_to_byte_array(hex_expected_output, expected_output);
+
+    sha256_compute(input, len, output);
+    
+    if (memcmp(output, expected_output, 32) == 0) {
+        printf("Test %d passed!\n", counter);
+    } else {
+        printf("Test %d failed!\n", counter);
+    }
+    
+    printf("Input: %s\n", hex_input);
+    sha256_to_hex_string(output, output_hex_string);
+    printf("Hash: %s\n", output_hex_string);
+    counter++;
+}
+
 int main() {
     test_sha256_incremental();
-    test_case_1();
-    test_case_2();
-    test_case_3();
-    test_case_4();
-    test_case_5();
-    test_case_6();
-    test_case_7();
-    test_case_8();
-    test_case_9();
-    test_case_10();
-    test_case_11();
-    test_case_12();
-    test_case_13();
-    test_case_14();
-    test_case_15();
-    test_case_16();
-    test_case_17();
-    test_case_18();
-    test_case_19();
-    test_case_20();
-    test_case_21();
-    test_case_22();
-    test_case_23();
-    test_case_24();
-    test_case_25();
-    test_case_26();
-    test_case_27();
-    test_case_28();
-    test_case_29();
-    test_case_30();
-    test_case_31();
-    test_case_32();
-    test_case_33();
-    test_case_34();
-    test_case_35();
-    test_case_36();
-    test_case_37();
-    test_case_38();
-    test_case_39();
-    test_case_40();
-    test_case_41();
-    test_case_42();
-    test_case_43();
-    test_case_44();
-    test_case_45();
-    test_case_46();
-    test_case_47();
-    test_case_48();
-    test_case_49();
-    test_case_50();
-    test_case_51();
-    test_case_52();
-    test_case_53();
-    test_case_54();
-    test_case_55();
-    test_case_56();
-    test_case_57();
-    test_case_58();
-    test_case_59();
-    test_case_60();
-    test_case_61();
-    test_case_62();
-    test_case_63();
-    test_case_64();
-    test_case_65();
+
+    FILE *file = fopen("SHA256ShortMsg.rsp", "r");
+    if (file == NULL) {
+        printf("Error opening file.\n");
+        return 1;
+    }
+
+    char line[256];
+    char hex_input[256];
+    char hex_expected_output[65];
+
+    while (fgets(line, sizeof(line), file)) {
+        if (strstr(line, "Msg =")) {
+            sscanf(line, "Msg = %s", hex_input);
+        }
+        if (strstr(line, "MD =")) {
+            sscanf(line, "MD = %s", hex_expected_output);
+            run_test(hex_input, hex_expected_output);
+        }
+    }
+
+    fclose(file);
 
     return 0;
 }

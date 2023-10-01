@@ -181,3 +181,11 @@ void sha256_to_hex_string(const uint8_t hash[32], char *hex_str) {
     hex_str[64] = '\0';  // Null terminate the string
 }
 
+// Function to convert hex string to byte array
+void hex_string_to_byte_array(const char* hex_string, uint8_t* byte_array) {
+    size_t len = strlen(hex_string);
+    for (size_t i = 0; i < len; i += 2) {
+        sscanf(hex_string + i, "%2hhx", &byte_array[i / 2]);
+    }
+}
+

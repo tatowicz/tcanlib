@@ -29,10 +29,15 @@ sha256_finalize(&ctx, hash);
 ```
 
 ## Testing
-A test function, `test_sha256_incremental`, is provided to demonstrate and verify the functionality of the incremental update mechanism. To run the test, compile and execute the program.
 ```
 $ make test
 ```
+
+1. SHA245ShortMsg.rsp test vectors
+
+## TODO
+* Monte carlo testing
+* Figure out failing test 0
 
 ## References
 - Official [SHA-2 Standard](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf) from NIST.

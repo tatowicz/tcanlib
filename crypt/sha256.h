@@ -17,5 +17,6 @@ void sha256_init(SHA256_CTX *ctx);
 void sha256_update(SHA256_CTX *ctx, const uint8_t data[], size_t len);
 void sha256_finalize(SHA256_CTX *ctx, uint8_t hash[]);
 void sha256_to_hex_string(const uint8_t hash[32], char *hex_str);
+void hex_string_to_byte_array(const char* hex_string, uint8_t* byte_array);
 
 #endif 
