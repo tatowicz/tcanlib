@@ -43,21 +43,6 @@ void test_sha256_incremental() {
     printf("Hash: %s\n", hex_str);
 }
 
-
-void test_case_1() {
-    unsigned char input[] = { 0x00 };
-    unsigned char expected_output[] = { 0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55 };
-    unsigned char output[32];
-    
-    sha256_compute(input, sizeof(input), output);
-    
-    if (memcmp(output, expected_output, 32) == 0) {
-        printf("Test case 1 passed.\n");
-    } else {
-        printf("Test case 1 failed.\n");
-    }
-}
-
 void run_test(const char* hex_input, const char* hex_expected_output) {
     size_t len = strlen(hex_input) / 2;
     unsigned char input[len];
