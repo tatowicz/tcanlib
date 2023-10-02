@@ -71,7 +71,7 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size);
 
 // CAN driver interface functions, this functions must be implemented by the user
 // and is used by the protocol to send and receive CAN messages
-bool send_ctp_message(uint32_t id, const uint8_t *data, uint8_t length);
+bool send_ctp_message(uint32_t id, uint8_t *data, uint8_t length);
 bool receive_ctp_message(uint32_t *id, uint8_t *data, uint8_t *length);
 
 #endif

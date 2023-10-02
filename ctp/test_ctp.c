@@ -25,11 +25,6 @@ int mock_frame_index = 0;
 
 // Function to enqueue a mock frame
 void enqueue_mock_frame(uint32_t id, uint8_t *data, uint8_t length) {
-    //printf("[DEBUG] Enqueueing mock frame with ID: %u, Data: ", id);
-    // for (int i = 0; i < length; i++) {
-    //     printf("%02X ", data[i]);
-    // }
-    // printf("\n");
 
     if (mock_frame_count < 100) {
         mock_frames[mock_frame_count].id = id;
@@ -40,7 +35,7 @@ void enqueue_mock_frame(uint32_t id, uint8_t *data, uint8_t length) {
 }
 
 // Mock driver function to send a CAN message to the bus
-bool send_ctp_message(uint32_t id, const uint8_t *data, uint8_t length) {
+bool send_ctp_message(uint32_t id, uint8_t *data, uint8_t length) {
     printf("Sending CAN message with ID: %u, Data: ", id);
     for (int i = 0; i < length; i++) {
         printf("%02X ", data[i]);
@@ -302,6 +297,8 @@ bool test_ctp_receive() {
     assert(data_len == sizeof(expected_data2));
     assert(memcmp(received_data, expected_data2, data_len) == 0);
     printf("SEQ: 2 Passed\n");
+
+    // TODO: Add long sequence self test
 
     return true;
 }

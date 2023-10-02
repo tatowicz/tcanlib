@@ -102,8 +102,8 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
                         printf("Buffer overflow: received_length=%u, buffer_size=%u\n", received_length, buffer_size);
                         return -1;  // Error: buffer overflow
                     }
-                    memcpy(&buffer[received_length], &can_data[1], CTP_END_DATA_LENGTH);
-                    received_length += bytes_left; //CTP_END_DATA_LENGTH;
+                    memcpy(&buffer[received_length], &can_data[1], bytes_left);
+                    received_length += bytes_left;
                     return received_length;  // Successfully received the full frame
 
                 default:
