@@ -45,35 +45,31 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
     uint8_t expected_sequence_number = 0;
     uint32_t expected_total_length = 0;
     bool start_frame_received = false;
-    uint32_t can_id;  
+    uint32_t can_id;
+    uint8_t frame_type;
 
-    //const uint32_t MAX_RETRIES = 1000;
-    //uint32_t retry_count = 0;
 
     while (received_length < expected_total_length || !start_frame_received) {
         if (!receive_ctp_message(&can_id, can_data, &length)) {
-            //retry_count++;
-            // if (retry_count >= MAX_RETRIES) {
-            //      return -1;  // Return error if max retry count is reached
-            // }
-            continue;  // Keep trying until we get a message or reach max retries
+            continue;  // Keep trying until we get a message or reach timeout
         }
 
-        // Reset retry count on successful reception
-        //retry_count = 0;
+        frame_type = can_data[0];
 
-        if (!start_frame_received && can_data[0] == CTP_START_FRAME) {
+        if (!start_frame_received && frame_type == CTP_START_FRAME) {
             expected_total_length = can_data[1];
 
             if (expected_total_length > buffer_size) {
-                printf("Buffer provided is not enough: expected_total_length=%u, buffer_size=%u\n", expected_total_length, buffer_size);
+                printf("Buffer provided is not enough: expected_total_length=%u, buffer_size=%u\n", 
+                        expected_total_length, buffer_size);
                 return -1;  // Error: buffer provided is not enough
             }
 
-            uint8_t start_frame_length = (can_data[1] > CTP_START_DATA_SIZE) ? CTP_START_DATA_SIZE : can_data[1];
+            uint8_t start_frame_length = (expected_total_length > CTP_START_DATA_SIZE) ? 
+                                          CTP_START_DATA_SIZE : expected_total_length;
+
             memcpy(buffer, &can_data[2], start_frame_length);
             received_length += start_frame_length;
-            expected_sequence_number = 1;
             start_frame_received = true;
 
             if (expected_total_length == start_frame_length) {
@@ -84,7 +80,9 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
         }
 
         if (start_frame_received) {
-            switch (can_data[0]) {
+            uint32_t bytes_left = expected_total_length - received_length;
+            
+            switch (frame_type) {
                 case CTP_CONSECUTIVE_FRAME:
                     if (can_data[1] != expected_sequence_number) {
                         printf("Expected sequence number %u but received %u\n", expected_sequence_number, can_data[1]);
@@ -100,12 +98,12 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
                     break;
 
                 case CTP_END_FRAME:
-                    if ((received_length + CTP_END_DATA_LENGTH) > buffer_size) {
+                    if ((received_length + bytes_left) > buffer_size) {
                         printf("Buffer overflow: received_length=%u, buffer_size=%u\n", received_length, buffer_size);
                         return -1;  // Error: buffer overflow
                     }
                     memcpy(&buffer[received_length], &can_data[1], CTP_END_DATA_LENGTH);
-                    received_length += CTP_END_DATA_LENGTH;
+                    received_length += bytes_left; //CTP_END_DATA_LENGTH;
                     return received_length;  // Successfully received the full frame
 
                 default:

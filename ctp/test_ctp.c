@@ -7,8 +7,6 @@
 #include "ctp.h"
 
 
-#define MAX_MOCK_FRAMES 10
-
 // Flag to capture what the mock driver send function sends
 // Think of these as testing probes
 uint8_t last_sent_data[CAN_MAX_DATA_LENGTH];
@@ -21,19 +19,19 @@ typedef struct {
 } MockFrame;
 
 // Mock frame queue
-MockFrame mock_frames[MAX_MOCK_FRAMES];
+MockFrame mock_frames[100];
 int mock_frame_count = 0;
 int mock_frame_index = 0;
 
 // Function to enqueue a mock frame
 void enqueue_mock_frame(uint32_t id, uint8_t *data, uint8_t length) {
-    printf("[DEBUG] Enqueueing mock frame with ID: %u, Data: ", id);
-    for (int i = 0; i < length; i++) {
-        printf("%02X ", data[i]);
-    }
-    printf("\n");
+    //printf("[DEBUG] Enqueueing mock frame with ID: %u, Data: ", id);
+    // for (int i = 0; i < length; i++) {
+    //     printf("%02X ", data[i]);
+    // }
+    // printf("\n");
 
-    if (mock_frame_count < MAX_MOCK_FRAMES) {
+    if (mock_frame_count < 100) {
         mock_frames[mock_frame_count].id = id;
         memcpy(mock_frames[mock_frame_count].data, data, length);
         mock_frames[mock_frame_count].length = length;
@@ -51,6 +49,7 @@ bool send_ctp_message(uint32_t id, const uint8_t *data, uint8_t length) {
     
     last_sent_id = id;
     memcpy(last_sent_data, data, length);
+    enqueue_mock_frame(id, data, length);
     return true; // Simulate successful send
 }
 
@@ -250,6 +249,9 @@ bool test_ctp_receive() {
                                0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 
                                0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
                                0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
                                0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x11};
 
     uint8_t len = sizeof(expected_data);
@@ -258,21 +260,48 @@ bool test_ctp_receive() {
     enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, len, 0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x00}, 8);
 
     // Mock receiving a CONSECUTIVE frame
+    enqueue_mock_frame(test_id, (uint8_t[]){CTP_CONSECUTIVE_FRAME, 0, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33}, 8);
     enqueue_mock_frame(test_id, (uint8_t[]){CTP_CONSECUTIVE_FRAME, 1, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33}, 8);
     enqueue_mock_frame(test_id, (uint8_t[]){CTP_CONSECUTIVE_FRAME, 2, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33}, 8);
     enqueue_mock_frame(test_id, (uint8_t[]){CTP_CONSECUTIVE_FRAME, 3, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33}, 8);
+    enqueue_mock_frame(test_id, (uint8_t[]){CTP_CONSECUTIVE_FRAME, 4, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33}, 8);
+    enqueue_mock_frame(test_id, (uint8_t[]){CTP_CONSECUTIVE_FRAME, 5, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33}, 8);
 
     // Mock receiving an END frame
     enqueue_mock_frame(test_id, (uint8_t[]){CTP_END_FRAME, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x11}, 8);
 
     // Buffer to hold received data
-    uint8_t received_data[1024];
+    uint8_t received_data[512];
 
     // Call the function
     uint32_t data_len = ctp_receive(received_data, sizeof(received_data));
 
     assert(data_len == sizeof(expected_data));
     assert(memcmp(received_data, expected_data, data_len) == 0);
+    printf("SEQ: 1 Passed\n");
+
+
+    mock_frame_count = 0;
+    mock_frame_index = 0;
+
+    uint8_t expected_data2[] = {0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x00, 
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33,
+                               0x44, 0x55, 0x66, 0x77, 0x88, 0x99};
+
+    uint32_t bytes_sent = ctp_send(test_id, expected_data2, sizeof(expected_data2));
+    data_len = ctp_receive(received_data, sizeof(received_data));
+
+    printf("Bytes sent: %d\n", bytes_sent);
+    printf("Data len: %d\n", data_len);
+    assert(bytes_sent == data_len);
+    assert(data_len == sizeof(expected_data2));
+    assert(memcmp(received_data, expected_data2, data_len) == 0);
+    printf("SEQ: 2 Passed\n");
 
     return true;
 }
