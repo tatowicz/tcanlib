@@ -38,6 +38,8 @@ void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
     send_ctp_message(frame->id, can_data, length);
 }
 
+// Receive a CTP message up to 255 bytes in size, and store it in the buffer
+// will check buffer size and return -1 if buffer is not big enough
 int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
     uint8_t can_data[CAN_MAX_DATA_LENGTH] = {0};
     uint8_t length;
@@ -116,6 +118,20 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
     return -1;  // Should not reach here unless there's an error
 }
 
+// Receive length bytes, and store it in the buffer.
+int32_t ctp_receive_bytes(uint8_t *buffer, uint32_t length) {
+    int32_t bytes_received = 0;
+    
+    while (bytes_received < length) {
+         bytes_received += ctp_receive(buffer + bytes_received, length - bytes_received);
+
+         if (bytes_received < 0) {
+             return -1;
+         }
+    }
+
+    return bytes_received;
+}
 
 uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint8_t length) {
     CTP_Frame frame;

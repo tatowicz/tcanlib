@@ -40,7 +40,7 @@ The `ctp_receive` function is used to receive a frame:
 
 ```c
 uint32_t id = 456;
-uint8_t received_data[MAX_BUFFER_SIZE];
+uint8_t received_data[512];
 
 uint32_t data_len = ctp_receive(received_data, sizeof(received_data));
 ```
