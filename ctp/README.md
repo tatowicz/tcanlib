@@ -4,11 +4,51 @@
 
 The CAN Transport Protocol (CTP) is a communication protocol designed to operate over a CAN bus. CTP provides mechanisms to send larger data payloads across multiple frames, manage flow control, and handle errors.
 
+```plaintext
++-------------------------------------------------+  
+|                     CTP_Frame                   |  
++-------------------+-----------------------------+  
+|        id         |             type            |  
+|    (32 bits)      |          (8 bits)           |  
++-------------------+-----------------------------+  
+|                        payload                  |  
+|     +-------------------------------------+     |  
+|     |             start payload           |     |  
+|     | +--------------+------------------+ |     |
+|     | | payload_len  |       data       | |     |
+|     | | (16 bits)    | (61 bytes)       | |     |
+|     | +--------------+------------------+ |     |
+|     +-------------------------------------+     |
+|     +-------------------------------------+     |
+|     |        consecutive payload          |     |
+|     | +--------------+------------------+ |     |
+|     | |  sequence    |       data       | |     |
+|     | |  (8 bits)    | (62 bytes)       | |     |
+|     | +--------------+------------------+ |     |
+|     +-------------------------------------+     |
+|     +-------------------------------------+     |
+|     |            end payload              |     |
+|     | +------------------+                |     |
+|     | |       data       |                |     |
+|     | | (63 bytes)       |                |     |
+|     | +------------------+                |     |
+|     +-------------------------------------+     |
+|     +-------------------------------------+     |
+|     |           error payload             |     |
+|     | +--------------+------------------+ |     |
+|     | |  errorCode   |       data       | |     |
+|     | | (8 bits)     | (63 bytes)       | |     |
+|     | +--------------+------------------+ |     |
+|     +-------------------------------------+     |
++-------------------------------------------------+
+```
+
 ## Features
 
 - **Multi-frame Transmission**: CTP can transmit data that spans multiple frames, including start frames, consecutive frames, and end frames.
 
 - **Error Handling**: The protocol provides mechanisms to handle errors like MESSAGE_TIMEOUT and OUT_OF_ORDER.
+- **CAN FD Support**
 
 ## Frame Types
 
@@ -66,8 +106,6 @@ The codebase includes various test functions to validate the functionality of th
 ```c
 $ make test
 ```
-
-## TODO
 
 ## License
 

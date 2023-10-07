@@ -72,9 +72,6 @@ void ctp_process_frame(const CTP_Frame *frame) {
             }
             printf("\n");
             break;
-        case CTP_FLOW_CONTROL_FRAME:
-            printf("Received FLOW CONTROL FRAME with control code: %u\n", frame->payload.flowControl.control);
-            break;
         default:
             break;
     }

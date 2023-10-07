@@ -18,6 +18,11 @@
 #define CTP_FD_END_DATA_LENGTH 63
 #define CTP_FD_ERROR_DATA_LENGTH 63
 
+#define CTP_START_FRAME_HEADER_SIZE 3
+#define CTP_CONSECUTIVE_FRAME_HEADER_SIZE 2
+#define CTP_END_FRAME_HEADER_SIZE 1
+
+
 // Define CTP frame types
 typedef enum {
     CTP_START_FRAME,
@@ -49,7 +54,7 @@ typedef struct {
     union {
         struct {
             uint16_t payload_len;                   // Length of the whole data payload
-            uint8_t data[CTP_FD_START_DATA_SIZE];   // 1 byte for length
+            uint8_t data[CTP_FD_START_DATA_SIZE];   // 2 bytes for length
         } start;
         struct {
             uint8_t sequence;
@@ -58,9 +63,6 @@ typedef struct {
         struct {
             uint8_t data[CTP_FD_END_DATA_LENGTH]; 
         } end;
-        struct {
-            CTP_FlowControl control;
-        } flowControl;
         struct {
             CTP_ErrorCode errorCode;
             uint8_t data[CTP_FD_ERROR_DATA_LENGTH];

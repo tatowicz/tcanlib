@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdint.h>
 #include <string.h>
 
 #include "ctp.h"
@@ -16,17 +15,17 @@ void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
         case CTP_START_FRAME:
             can_data[1] = (uint8_t)(frame->payload.start.payload_len >> 8);
             can_data[2] = (uint8_t)(frame->payload.start.payload_len & 0xFF);
-            memcpy(&can_data[3], &frame->payload.start.data, len);
-            length = len + 3; 
+            memcpy(&can_data[CTP_START_FRAME_HEADER_SIZE], &frame->payload.start.data, len);
+            length = len + CTP_START_FRAME_HEADER_SIZE; 
             break;
         case CTP_CONSECUTIVE_FRAME:
             can_data[1] = frame->payload.consecutive.sequence;
-            memcpy(&can_data[2], frame->payload.consecutive.data, len);
-            length = len + 2;
+            memcpy(&can_data[CTP_CONSECUTIVE_FRAME_HEADER_SIZE], frame->payload.consecutive.data, len);
+            length = len + CTP_CONSECUTIVE_FRAME_HEADER_SIZE;
             break;
         case CTP_END_FRAME:
-            memcpy(&can_data[1], frame->payload.end.data, len);
-            length = len + 1;
+            memcpy(&can_data[CTP_END_FRAME_HEADER_SIZE], frame->payload.end.data, len);
+            length = len + CTP_END_FRAME_HEADER_SIZE;
             break;
         case CTP_ERROR_FRAME:
             can_data[1] = frame->payload.error.errorCode;
