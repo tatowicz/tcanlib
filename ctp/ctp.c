@@ -14,9 +14,10 @@ void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
 
     switch (frame->type) {
         case CTP_START_FRAME:
-            can_data[1] = frame->payload.start.payload_len;
-            memcpy(&can_data[2], frame->payload.start.data, len);
-            length = len + 2; 
+            can_data[1] = (uint8_t)(frame->payload.start.payload_len >> 8);
+            can_data[2] = (uint8_t)(frame->payload.start.payload_len & 0xFF);
+            memcpy(&can_data[3], &frame->payload.start.data, len);
+            length = len + 3; 
             break;
         case CTP_CONSECUTIVE_FRAME:
             can_data[1] = frame->payload.consecutive.sequence;
@@ -38,9 +39,8 @@ void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
     send_ctp_message(frame->id, can_data, length);
 }
 
-// Receive a CTP message up to 255 bytes in size, and store it in the buffer
-// will check buffer size and return -1 if buffer is not big enough
-int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
+// RX up to 255 consecutive frames.
+int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size, bool fd) {
     uint8_t can_data[CAN_MAX_DATA_LENGTH] = {0};
     uint8_t length;
     uint32_t received_length = 0;
@@ -50,6 +50,17 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
     uint32_t can_id;
     uint8_t frame_type;
 
+    uint8_t start_data_size;
+    uint8_t con_data_size;
+
+    if (fd) {
+        start_data_size = CTP_FD_START_DATA_SIZE;
+        con_data_size = CTP_FD_CONSECUTIVE_DATA_LENGTH;
+    }
+    else {
+        start_data_size = CTP_START_DATA_SIZE;
+        con_data_size = CTP_CONSECUTIVE_DATA_LENGTH;
+    }
 
     while (received_length < expected_total_length || !start_frame_received) {
         if (!receive_ctp_message(&can_id, can_data, &length)) {
@@ -59,7 +70,7 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
         frame_type = can_data[0];
 
         if (!start_frame_received && frame_type == CTP_START_FRAME) {
-            expected_total_length = can_data[1];
+            expected_total_length = (can_data[1] << 8) | can_data[2];
 
             if (expected_total_length > buffer_size) {
                 printf("Buffer provided is not enough: expected_total_length=%u, buffer_size=%u\n", 
@@ -67,17 +78,15 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
                 return -1;  // Error: buffer provided is not enough
             }
 
-            uint8_t start_frame_length = (expected_total_length > CTP_START_DATA_SIZE) ? 
-                                          CTP_START_DATA_SIZE : expected_total_length;
+            uint8_t start_frame_length = (expected_total_length > start_data_size) ? start_data_size : expected_total_length;
 
-            memcpy(buffer, &can_data[2], start_frame_length);
+            memcpy(buffer, &can_data[3], start_frame_length);
             received_length += start_frame_length;
             start_frame_received = true;
 
             if (expected_total_length == start_frame_length) {
                 return received_length;
             }
-            
             continue;
         }
 
@@ -90,12 +99,12 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
                         printf("Expected sequence number %u but received %u\n", expected_sequence_number, can_data[1]);
                         return -1;  // Error: sequence mismatch
                     }
-                    if ((received_length + CTP_CONSECUTIVE_DATA_LENGTH) > buffer_size) {
+                    if ((received_length + con_data_size) > buffer_size) {
                         printf("Buffer overflow: received_length=%u, buffer_size=%u\n", received_length, buffer_size);
                         return -1;  // Error: buffer overflow
                     }
-                    memcpy(&buffer[received_length], &can_data[2], CTP_CONSECUTIVE_DATA_LENGTH);
-                    received_length += CTP_CONSECUTIVE_DATA_LENGTH;
+                    memcpy(&buffer[received_length], &can_data[2], con_data_size);
+                    received_length += con_data_size;
                     expected_sequence_number++;
                     break;
 
@@ -119,11 +128,11 @@ int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size) {
 }
 
 // Receive length bytes, and store it in the buffer.
-int32_t ctp_receive_bytes(uint8_t *buffer, uint32_t length) {
-    int32_t bytes_received = 0;
+int32_t ctp_receive_bytes(uint8_t *buffer, uint32_t length, bool fd) {
+    uint32_t bytes_received = 0;
     
     while (bytes_received < length) {
-         bytes_received += ctp_receive(buffer + bytes_received, length - bytes_received);
+         bytes_received += ctp_receive(buffer + bytes_received, length - bytes_received, fd);
 
          if (bytes_received < 0) {
              return -1;
@@ -133,32 +142,46 @@ int32_t ctp_receive_bytes(uint8_t *buffer, uint32_t length) {
     return bytes_received;
 }
 
-uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint8_t length) {
+uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint16_t length, bool fd) {
     CTP_Frame frame;
     frame.id = id;
+    uint8_t start_data_size;
+    uint8_t end_data_size;
+    uint8_t con_data_size;
+
+    if (fd) {
+        start_data_size = CTP_FD_START_DATA_SIZE;
+        end_data_size = CTP_FD_END_DATA_LENGTH;
+        con_data_size = CTP_FD_CONSECUTIVE_DATA_LENGTH;
+    }
+    else {
+        start_data_size = CTP_START_DATA_SIZE;
+        end_data_size = CTP_END_DATA_LENGTH;
+        con_data_size = CTP_CONSECUTIVE_DATA_LENGTH;
+    }
     
-    uint8_t start_frame_length = (length > (CTP_START_DATA_SIZE)) ? (CTP_START_DATA_SIZE) : length;
+    uint16_t start_frame_length = (length > (start_data_size)) ? (start_data_size) : length;
 
     // Set up and send the START frame
     frame.type = CTP_START_FRAME;
     frame.payload.start.payload_len = length;
     memcpy(frame.payload.start.data, data, start_frame_length);
-    ctp_send_frame(&frame, start_frame_length);
+    ctp_send_frame(&frame, (uint8_t)start_frame_length);
 
     uint32_t bytes_sent = start_frame_length;
     uint8_t sequence_number = 0;
 
     while (bytes_sent < length) {
-        uint8_t bytes_left = length - bytes_sent;
+        uint32_t bytes_left = length - bytes_sent;
 
-        if (bytes_left <= (CTP_END_DATA_LENGTH)) {
+        if (bytes_left <= (end_data_size)) {
             frame.type = CTP_END_FRAME;
             memcpy(frame.payload.end.data, data + bytes_sent, bytes_left);
         } else {
             frame.type = CTP_CONSECUTIVE_FRAME;
             frame.payload.consecutive.sequence = sequence_number++;
-            memcpy(frame.payload.consecutive.data, data + bytes_sent, CTP_CONSECUTIVE_DATA_LENGTH);
-            bytes_left = CTP_CONSECUTIVE_DATA_LENGTH;
+            memcpy(frame.payload.consecutive.data, data + bytes_sent, con_data_size);
+            bytes_left = con_data_size;
         }
         
         ctp_send_frame(&frame, bytes_left);
@@ -168,11 +191,20 @@ uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint8_t length) {
     return bytes_sent;
 }
 
-uint32_t ctp_send(uint32_t id, uint8_t *data, uint32_t length) {
+uint32_t ctp_send(uint32_t id, uint8_t *data, uint32_t length, bool fd) {
     uint32_t bytes_sent = 0;
+    uint32_t max_len;
+
+    if (fd) {
+        max_len = CTP_FD_START_DATA_SIZE + MAX_SEQUENCE_NUM * CTP_FD_CONSECUTIVE_DATA_LENGTH + CTP_FD_END_DATA_LENGTH;
+    } 
+    else {
+        max_len = CTP_START_DATA_SIZE + MAX_SEQUENCE_NUM * CTP_CONSECUTIVE_DATA_LENGTH + CTP_END_DATA_LENGTH; 
+    }
+
     while (length > 0) {
-        uint16_t chunk_length = (length > (MAX_SEQUENCE_LEN)) ? (MAX_SEQUENCE_LEN) : length;
-        bytes_sent += ctp_send_data_sequence(id, data, chunk_length);
+        uint16_t chunk_length = (length > (max_len)) ? (max_len) : length;
+        bytes_sent += ctp_send_data_sequence(id, data, chunk_length, fd);
         data += chunk_length;
         length -= chunk_length;
     }

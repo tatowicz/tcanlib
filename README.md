@@ -1,5 +1,6 @@
 # tcanlib
 
+![](assets/)
 
 ### Goal 💥
 Full working code set that... 
@@ -14,9 +15,11 @@ Full working code set that...
 2. Application Layer and interface
 3. Drivers for PC and HW
 4. CLI
+5. FD support
 
 
 ## CLI
+* ctp_cli
 
 
 ## Hardware Support

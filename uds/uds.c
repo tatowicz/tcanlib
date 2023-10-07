@@ -65,21 +65,21 @@ void send_positive_response(uint8_t original_sid, uint8_t* data, uint32_t data_l
 
     if (data == NULL || data_length == 0) {
         // No data to send, just send the SID
-        ctp_send(RESPONSE_CAN_ID, response_data, 1);
+        ctp_send(RESPONSE_CAN_ID, response_data, 1, false);
         return;
     }
 
     memcpy(response_data + 1, data, data_length);
     
     // Send the response using the CTP (CAN Transport Protocol) send function
-    ctp_send(RESPONSE_CAN_ID, response_data, sizeof(response_data));
+    ctp_send(RESPONSE_CAN_ID, response_data, sizeof(response_data), false);
 }
 
 void send_negative_response(uint8_t original_sid, uint8_t error_code) {
     uint8_t response_data[3] = {SID_NEGATIVE_RESPONSE, original_sid, error_code};
     
     // Send the response using the CTP (CAN Transport Protocol) send function
-    ctp_send(RESPONSE_CAN_ID, response_data, sizeof(response_data));
+    ctp_send(RESPONSE_CAN_ID, response_data, sizeof(response_data), false);
 }
 
 void send_response(uint16_t sid, uint8_t* data, uint32_t data_length) {
@@ -95,7 +95,7 @@ void send_response(uint16_t sid, uint8_t* data, uint32_t data_length) {
     memcpy(response_buffer + 1, data, data_length);  // Copy the actual data after the SID
 
     // Send the buffer using CTP
-    ctp_send(RESPONSE_CAN_ID, response_buffer, data_length + 1);
+    ctp_send(RESPONSE_CAN_ID, response_buffer, data_length + 1, false);
 }
 
 void handle_message(uint8_t sid, uint8_t* data, uint32_t data_length) {

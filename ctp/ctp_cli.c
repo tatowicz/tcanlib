@@ -55,7 +55,7 @@ bool receive_ctp_message(uint32_t *id, uint8_t *data, uint8_t *length) {
 }
 
 void send_data(uint32_t id, const char* data) {
-    if (ctp_send(id, (uint8_t *)data, strlen(data)) <= 0) {
+    if (ctp_send(id, (uint8_t *)data, strlen(data), false) <= 0) {
         printf("Failed to send data!\n");
     } else {
         printf("Data sent successfully.\n");
@@ -66,7 +66,7 @@ void receive_data() {
     uint8_t buffer[512];  // Adjust the buffer size as needed.
 
     while (1) {
-        int32_t received_bytes = ctp_receive(buffer, sizeof(buffer));
+        int32_t received_bytes = ctp_receive(buffer, sizeof(buffer), false);
         
         if (received_bytes > 0) {
             printf("Received data: %.*s\n", received_bytes, buffer);

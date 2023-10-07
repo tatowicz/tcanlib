@@ -42,7 +42,7 @@ The `ctp_receive` function is used to receive a frame:
 uint32_t id = 456;
 uint8_t received_data[512];
 
-uint32_t data_len = ctp_receive(received_data, sizeof(received_data));
+uint32_t data_len = ctp_receive(received_data, sizeof(received_data), false);
 ```
 
 ### CLI
@@ -68,8 +68,6 @@ $ make test
 ```
 
 ## TODO
-
-1. Support FD frames
 
 ## License
 
