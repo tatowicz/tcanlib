@@ -37,7 +37,6 @@ See `SHA245ShortMsg.rsp` test vectors
 
 ## TODO
 * Monte carlo testing
-* Figure out failing test 0
 
 ## References
 - Official [SHA-2 Standard](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf) from NIST.

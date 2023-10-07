@@ -28,16 +28,8 @@ typedef enum {
     CTP_START_FRAME,
     CTP_CONSECUTIVE_FRAME,
     CTP_END_FRAME,
-    CTP_FLOW_CONTROL_FRAME,
     CTP_ERROR_FRAME,
 } CTP_FrameType;
-
-// Define CTP flow control commands
-typedef enum {
-    CTP_CONTINUE_SENDING,
-    CTP_WAIT,
-    CTP_ABORT
-} CTP_FlowControl;
 
 // Define CTP error codes
 typedef enum {

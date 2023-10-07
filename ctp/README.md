@@ -93,6 +93,9 @@ The command line interface supports `PCAN` hardware
 $ make cli
 $ ./cli send 123 "Hello World"
 ```
+**TODO**
+* FD Support on MAC
+* File support
 
 ### Error Handling
 

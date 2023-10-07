@@ -13,7 +13,7 @@ uint32_t pcan_channel = PCAN_USBBUS1;
 
 
 // Driver function for PCAN-USB MAC, used by the CTP to send frames to the CAN bus
-bool send_ctp_message(uint32_t id, const uint8_t *data, uint8_t length) {
+bool send_ctp_message(uint32_t id, uint8_t *data, uint8_t length) {
     TPCANStatus status;
     TPCANMsg message;
 
@@ -146,7 +146,7 @@ void print_help() {
     printf("    --baud <num>          Specify the baud rate.\n\n");
 
     printf("Examples:\n");
-    printf("  cli -i 1 send --id 123 --data \"hello\" --baud 250\n");
+    printf("  cli -i 0 send --id 123 --data \"hello\" --baud 250\n");
     printf("  cli -i 1 dump --baud 250\n");
 }
 

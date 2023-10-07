@@ -38,7 +38,6 @@ void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
     send_ctp_message(frame->id, can_data, length);
 }
 
-// RX up to 255 consecutive frames.
 int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size, bool fd) {
     uint8_t can_data[CAN_MAX_DATA_LENGTH] = {0};
     uint8_t length;
@@ -176,7 +175,8 @@ uint32_t ctp_send_data_sequence(uint32_t id, uint8_t *data, uint16_t length, boo
         if (bytes_left <= (end_data_size)) {
             frame.type = CTP_END_FRAME;
             memcpy(frame.payload.end.data, data + bytes_sent, bytes_left);
-        } else {
+        } 
+        else {
             frame.type = CTP_CONSECUTIVE_FRAME;
             frame.payload.consecutive.sequence = sequence_number++;
             memcpy(frame.payload.consecutive.data, data + bytes_sent, con_data_size);
