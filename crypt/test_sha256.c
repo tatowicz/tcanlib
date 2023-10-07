@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <stdlib.h>
+
 #include "sha256.h"
 
 void test_sha256_incremental() {
@@ -43,13 +45,13 @@ void test_sha256_incremental() {
     printf("Hash: %s\n", hex_str);
 }
 
-void run_test(const char* hex_input, const char* hex_expected_output) {
-    size_t len = strlen(hex_input) / 2;
+void run_test(const char* hex_input, const char* hex_expected_output, const char* length) {
+    uint32_t len = atoi(length) / 8;
     unsigned char input[len];
     unsigned char expected_output[32];
     unsigned char output[32];
     char output_hex_string[65];
-    static int counter = 0;
+    static uint32_t counter = 0;
 
     hex_string_to_byte_array(hex_input, input);
     hex_string_to_byte_array(hex_expected_output, expected_output);
@@ -80,14 +82,18 @@ int main() {
     char line[256];
     char hex_input[256];
     char hex_expected_output[65];
+    char length[16];
 
     while (fgets(line, sizeof(line), file)) {
+        if (strstr(line, "Len =")) {
+            sscanf(line, "Len = %s", length);
+        }
         if (strstr(line, "Msg =")) {
             sscanf(line, "Msg = %s", hex_input);
         }
         if (strstr(line, "MD =")) {
             sscanf(line, "MD = %s", hex_expected_output);
-            run_test(hex_input, hex_expected_output);
+            run_test(hex_input, hex_expected_output, length);
         }
     }
 
