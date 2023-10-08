@@ -354,7 +354,7 @@ bool test_ctp_receive() {
     uint8_t received_data[1024];
 
     // Call the function
-    uint32_t data_len = ctp_receive(received_data, sizeof(received_data), false);
+    uint32_t data_len = ctp_receive_seq(received_data, sizeof(received_data), false);
 
     assert(data_len == sizeof(expected_data));
     assert(memcmp(received_data, expected_data, data_len) == 0);
@@ -379,7 +379,7 @@ bool test_ctp_receive_self() {
                                0x44, 0x55, 0x66, 0x77, 0x88, 0x99};
 
     uint32_t bytes_sent = ctp_send(test_id, expected_data2, sizeof(expected_data2), false);
-    uint32_t data_len = ctp_receive(received_data, sizeof(received_data), false);
+    uint32_t data_len = ctp_receive(received_data, sizeof(expected_data2), false);
 
     printf("Bytes sent: %d\n", bytes_sent);
     printf("Data len: %d\n", data_len);
@@ -428,7 +428,7 @@ bool test_ctp_receive_self() {
     0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99};
 
     bytes_sent = ctp_send(test_id, data3, sizeof(data3), false);
-    data_len = ctp_receive_bytes(received_data, bytes_sent, false);
+    data_len = ctp_receive(received_data, bytes_sent, false);
 
     printf("Bytes sent: %d\n", bytes_sent);
     printf("Data len: %d\n", data_len);
@@ -450,7 +450,7 @@ bool ctp_test_first_frame() {
     uint8_t len = sizeof(expected_data);
     enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, 0x00, len, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE}, 8);
 
-    uint32_t data_len = ctp_receive(received_data, sizeof(received_data), false);
+    uint32_t data_len = ctp_receive(received_data, len, false);
 
     assert(data_len == sizeof(expected_data));
     assert(memcmp(received_data, expected_data, data_len) == 0);
@@ -465,10 +465,10 @@ bool ctp_test_small_first_frame() {
     uint32_t test_id = 123;
     uint8_t received_data[16];
     uint8_t expected_data[] = {0xAA, 0xBB, 0xCC};
-    uint8_t len2 = sizeof(expected_data);
-    enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, 0x00, len2, 0xAA, 0xBB, 0xCC}, 6);
+    uint8_t len = sizeof(expected_data);
+    enqueue_mock_frame(test_id, (uint8_t[]){CTP_START_FRAME, 0x00, len, 0xAA, 0xBB, 0xCC}, 6);
 
-    uint32_t data_len = ctp_receive(received_data, sizeof(received_data), false);
+    uint32_t data_len = ctp_receive(received_data, len, false);
 
     assert(data_len == sizeof(expected_data));
     assert(memcmp(received_data, expected_data, data_len) == 0);

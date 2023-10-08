@@ -66,8 +66,8 @@ typedef struct {
 // Protocol interface functions
 void ctp_send_frame(const CTP_Frame *frame, uint8_t len);
 uint32_t ctp_send(uint32_t id, uint8_t *data, uint32_t length, bool fd);
-int32_t ctp_receive(uint8_t* buffer, uint32_t buffer_size, bool fd);
-int32_t ctp_receive_bytes(uint8_t *buffer, uint32_t length, bool fd);
+int32_t ctp_receive_seq(uint8_t* buffer, uint32_t buffer_size, bool fd);
+int32_t ctp_receive(uint8_t *buffer, uint32_t length, bool fd);
 
 // CAN driver interface functions, this functions must be implemented by the user
 // and is used by the protocol to send and receive CAN messages

@@ -11,7 +11,7 @@ The CAN Transport Protocol (CTP) is a communication protocol designed to operate
 |        id         |             type            |  
 |    (32 bits)      |          (8 bits)           |  
 +-------------------+-----------------------------+  
-|                        payload                  |  
+|                    payload                      |  
 |     +-------------------------------------+     |  
 |     |             start payload           |     |  
 |     | +--------------+------------------+ |     |
@@ -47,12 +47,12 @@ The CAN Transport Protocol (CTP) is a communication protocol designed to operate
 
 - **Multi-frame Transmission**: CTP can transmit data that spans multiple frames, including start frames, consecutive frames, and end frames.
 
-- **Error Handling**: The protocol provides mechanisms to handle errors like MESSAGE_TIMEOUT and OUT_OF_ORDER.
+- **Error Handling**: The protocol provides mechanisms to handle errors like OUT_OF_ORDER.
 - **CAN FD Support**
 
 ## Frame Types
 
-1. **START_FRAME**: Initiates a multi-frame transmission. Contains the length of data in this frame.
+1. **START_FRAME**: Initiates a multi-frame transmission. Contains the length of data for the entire message up to `0xFFFF` bytes.
 2. **CONSECUTIVE_FRAME**: Part of a multi-frame sequence that follows a START_FRAME. Contains a sequence number to ensure data is transmitted in order.
 3. **END_FRAME**: Indicates the end of a multi-frame transmission.
 4. **ERROR_FRAME**: Used to transmit error codes.
@@ -71,7 +71,12 @@ uint8_t data[] = {
     0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99
 };
 
-ctp_send(id, data, sizeof(data));
+uint32_t bytes_sent = ctp_send(id, data, sizeof(data), false);
+```
+for FD support set the FD flag = true
+
+```c
+uint32_t bytes_sent = ctp_send(id, data, sizeof(data), true);
 ```
 
 ### Receiving Data
@@ -82,17 +87,24 @@ The `ctp_receive` function is used to receive a frame:
 uint32_t id = 456;
 uint8_t received_data[512];
 
-uint32_t data_len = ctp_receive(received_data, sizeof(received_data), false);
+int32_t data_len = ctp_receive(received_data, sizeof(received_data), false);
 ```
 
-### CLI
+for FD support set the FD flag = true
+
+```c
+int32_t data_len = ctp_receive(received_data, sizeof(received_data), true);
+```
+
+## CLI
 
 The command line interface supports `PCAN` hardware
 
 ```c
 $ make cli
-$ ./cli send 123 "Hello World"
+$ ./cli -h
 ```
+
 **TODO**
 * FD Support on MAC
 * File support
