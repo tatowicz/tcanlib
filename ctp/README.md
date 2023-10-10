@@ -102,7 +102,27 @@ The command line interface supports `PCAN` hardware
 
 ```c
 $ make cli
-$ ./cli -h
+```
+
+```plaintext
+Usage: cli [OPTIONS] COMMAND [ARGS]
+
+Options:
+  -i, --interface <num>   Specify the interface number.
+  -h, --help              Show this help message and exit.
+
+Commands:
+  send                    Send a command.
+    --id <num>            Specify the ID for the send command.
+    --data <string>       Specify the data for the send command.
+  dump                    Dump the data.
+
+Args for both send and dump:
+    --baud <num>          Specify the baud rate.
+
+Examples:
+  cli -i 0 send --id 123 --data "hello" --baud 250
+  cli -i 1 dump --baud 250
 ```
 
 **TODO**
