@@ -48,35 +48,6 @@ bool send_ctp_message(uint32_t id, uint8_t *data, uint8_t length) {
     return true; // Simulate successful send
 }
 
-void ctp_process_frame(const CTP_Frame *frame) {
-    // Process the received CTP frame
-     switch (frame->type) {
-        case CTP_START_FRAME:
-            printf("Received START FRAME with length %u and data: ", frame->payload.start.payload_len);
-            for (int i = 0; i < CTP_START_DATA_SIZE; i++) {
-                printf("%02X ", frame->payload.start.data[i]);
-            }
-            printf("\n");
-            break;
-        case CTP_CONSECUTIVE_FRAME:
-            printf("Received CONSECUTIVE FRAME with sequence %u and data: ", frame->payload.consecutive.sequence);
-            for (int i = 0; i < CTP_CONSECUTIVE_DATA_LENGTH; i++) {
-                printf("%02X ", frame->payload.consecutive.data[i]);
-            }
-            printf("\n");
-            break;
-        case CTP_END_FRAME:
-            printf("Received END FRAME with data: ");
-            for (int i = 0; i < CTP_END_DATA_LENGTH; i++) {
-                printf("%02X ", frame->payload.end.data[i]);
-            }
-            printf("\n");
-            break;
-        default:
-            break;
-    }
-}
-
 // Modified Mock driver function
 bool receive_ctp_message(uint32_t *id, uint8_t *data, uint8_t *length) {    
     // If we have no more frames to dequeue, return false
