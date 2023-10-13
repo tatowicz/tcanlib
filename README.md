@@ -12,8 +12,8 @@ Full working code set that...
 
 ### Features  🚀
 1. Transport Layer
-2. Application Layer and interface
-3. Drivers for PC and HW
+2. Application Layer
+3. Drivers for Desktop and HW
 4. CLI
 5. FD support
 
