@@ -6,6 +6,7 @@
 
 #include "ctp.h"
 
+#define MOCK_QUEUE_LEN 350
 
 // Flag to capture what the mock driver send function sends
 // Think of these as testing probes
@@ -19,18 +20,20 @@ typedef struct {
 } MockFrame;
 
 // Mock frame queue
-MockFrame mock_frames[150];
+MockFrame mock_frames[MOCK_QUEUE_LEN];
 int mock_frame_count = 0;
 int mock_frame_index = 0;
 
 // Function to enqueue a mock frame
 void enqueue_mock_frame(uint32_t id, uint8_t *data, uint8_t length) {
 
-    if (mock_frame_count < 150) {
+    if (mock_frame_count < MOCK_QUEUE_LEN) {
         mock_frames[mock_frame_count].id = id;
         memcpy(mock_frames[mock_frame_count].data, data, length);
         mock_frames[mock_frame_count].length = length;
         mock_frame_count++;
+    } else {
+        printf("[DEBUG] Mock frame queue full\n");
     }
 }
 
@@ -359,6 +362,9 @@ bool test_ctp_receive_self() {
     assert(memcmp(received_data, expected_data2, data_len) == 0);
     printf("SEQ: 0 Passed\n");
 
+    mock_frame_count = 0;
+    mock_frame_index = 0;
+
         uint8_t data3[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
     0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
     0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
@@ -447,6 +453,40 @@ bool ctp_test_small_first_frame() {
     return true;
 }
 
+bool test_ctp_seq_rollover() {
+    mock_frame_count = 0;
+    mock_frame_index = 0;
+
+    uint32_t test_id = 123;
+    uint8_t received_data[2048];
+    uint8_t expected_data[2048];
+
+    for (int i = 0; i < sizeof(expected_data); i++) {
+        expected_data[i] = i;
+    }
+
+    uint32_t bytes_sent = ctp_send(test_id, expected_data, sizeof(expected_data), false);
+    uint32_t data_len = ctp_receive(received_data, sizeof(expected_data), false);
+
+    printf("Bytes sent: %d\n", bytes_sent);
+    printf("Data len: %d\n", data_len);
+    assert(bytes_sent == data_len);
+    assert(data_len == sizeof(expected_data));
+    assert(memcmp(received_data, expected_data, data_len) == 0);
+
+    mock_frame_count = 0;
+    mock_frame_index = 0;
+
+    bytes_sent = ctp_send_data_sequence(test_id, expected_data, sizeof(expected_data), false);
+    data_len = ctp_receive(received_data, sizeof(expected_data), false);
+
+    assert(bytes_sent == data_len);
+    assert(data_len == sizeof(expected_data));
+    assert(memcmp(received_data, expected_data, data_len) == 0);
+
+    return true;
+}
+
 
 int main() {
     if (test_send()) {
@@ -495,6 +535,12 @@ int main() {
         printf("Test Receive Self PASSED.\n");
     } else {
         printf("Test Receive Self FAILED.\n");
+    }
+
+    if (test_ctp_seq_rollover()) {
+        printf("Test Seq Rollover PASSED.\n");
+    } else {
+        printf("Test Seq Rollover FAILED.\n");
     }
 
     return 0;

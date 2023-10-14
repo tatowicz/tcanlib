@@ -152,7 +152,6 @@ $ make test
 ## TODO
  * Send file or pipe support in cli
  * HAL to abstract away drivers for supported platforms
- * Test 255 sequence limit rollover.
 
 ## License
 
