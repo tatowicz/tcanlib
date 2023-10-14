@@ -39,7 +39,7 @@ void ctp_send_frame(const CTP_Frame *frame, uint8_t len) {
 }
 
 // This function can only receive 2^16 or 0xFFFF bytes, because of the protocol
-// payload_len field is 16bits, for larger data size use ctp_receive, this 
+// payload_len field is 16bits, for larger data size use ctp_receive 
 int32_t ctp_receive_seq(uint8_t* buffer, uint32_t buffer_size, bool fd) {
     uint8_t can_data[CAN_MAX_DATA_LENGTH] = {0};
     uint8_t length;
@@ -87,6 +87,7 @@ int32_t ctp_receive_seq(uint8_t* buffer, uint32_t buffer_size, bool fd) {
             if (expected_total_length == start_frame_length) {
                 return received_length;
             }
+            
             continue;
         }
 

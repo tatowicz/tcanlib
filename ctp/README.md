@@ -59,6 +59,16 @@ The CAN Transport Protocol (CTP) is a communication protocol designed to operate
 
 ## Usage
 
+### Getting Started
+
+Implement the following functions that will send/receive a single CAN frame from hardware.
+See `ctp_cli.c` for an example on what this looks like.
+
+```c
+bool send_ctp_message(uint32_t id, uint8_t *data, uint8_t length);
+bool receive_ctp_message(uint32_t *id, uint8_t *data, uint8_t *length);
+```
+
 ### Sending Data
 
 To send a sequence of data:
@@ -125,9 +135,6 @@ Examples:
   cli -i 1 dump --baud 250
 ```
 
-**TODO**
-* FD Support on MAC
-* File support
 
 ### Error Handling
 
@@ -141,6 +148,11 @@ The codebase includes various test functions to validate the functionality of th
 ```c
 $ make test
 ```
+
+## TODO
+ * Send file or pipe support in cli
+ * HAL to abstract away drivers for supported platforms
+ * Test 255 sequence limit rollover.
 
 ## License
 

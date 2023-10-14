@@ -129,10 +129,14 @@ int server_listen(void) {
             ctp_send(CTP_ID, (uint8_t*)res, strlen(res), false);
         } 
         else if (strcmp(command, "DOWNLOAD") == 0) {
-            process_download(args);
+            char res[64];
+            strcpy(res, process_download(args));
+            ctp_send(CTP_ID, (uint8_t*)res, strlen(res), false);
         } 
         else if (strcmp(command, "UPLOAD") == 0) {
-            process_upload(args, args, strlen(args));
+            char res[64];
+            strncpy(res, process_upload(args, args, strlen(args)), sizeof(res));
+            ctp_send(CTP_ID, (uint8_t*)res, strlen(res), false);
         } 
         else {
             printf("Unknown command: %s\n", command);

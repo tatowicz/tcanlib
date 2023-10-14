@@ -8,61 +8,21 @@
 
 
 
-// Create mock structure for testing, this is a copy
-// from the CTP tests, will eventually make this reusable
-// TODO: Make this reusable
-typedef struct {
-    uint32_t id;
-    uint8_t data[CAN_MAX_DATA_LENGTH];
-    uint8_t length;
-} MockFrame;
 
-// Mock frame queue
-MockFrame mock_frames[150];
-int mock_frame_count = 0;
-int mock_frame_index = 0;
-
-// Function to enqueue a mock frame
-void enqueue_mock_frame(uint32_t id, uint8_t *data, uint8_t length) {
-
-    if (mock_frame_count < 150) {
-        mock_frames[mock_frame_count].id = id;
-        memcpy(mock_frames[mock_frame_count].data, data, length);
-        mock_frames[mock_frame_count].length = length;
-        mock_frame_count++;
-    }
-}
-
-// Mock driver function to send a CAN message to the bus
+// We need these driver functions to compile the server.c file
+// since it depends on ctp, however in our tests we don't actually
+// use the ctp functions, so we can just stub them out
 bool send_ctp_message(uint32_t id, uint8_t *data, uint8_t length) {
-    printf("[DEBUG] Sending CAN message with ID: %u, Data: ", id);
-    for (int i = 0; i < length; i++) {
-        printf("%02X ", data[i]);
-    }
-    printf("\n");
-    
-    enqueue_mock_frame(id, data, length);
-    return true; // Simulate successful send
+    (void)id;
+    (void)data;
+    (void)length;
+    return true;
 }
 
-// Modified Mock driver function
-bool receive_ctp_message(uint32_t *id, uint8_t *data, uint8_t *length) {    
-    // If we have no more frames to dequeue, return false
-    if (mock_frame_index >= mock_frame_count) {
-        return false;
-    }
-    
-    // Dequeue the next frame
-    *id = mock_frames[mock_frame_index].id;
-    memcpy(data, mock_frames[mock_frame_index].data, mock_frames[mock_frame_index].length);
-    *length = mock_frames[mock_frame_index].length;
-    mock_frame_index++;
-    
-    printf("[DEBUG] Receive mock frame with ID: %u, Data: ", *id);
-    for (int i = 0; i < *length; i++) {
-        printf("%02X ", data[i]);
-    }
-    printf("\n");
+bool receive_ctp_message(uint32_t *id, uint8_t *data, uint8_t *length) {
+    (void)id;
+    (void)data;
+    (void)length;
     return true;
 }
 

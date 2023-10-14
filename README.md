@@ -5,7 +5,7 @@
 ### Goal 💥
 Full working code set that... 
 
-1. Works on hardware
+1. Works on hardware, Full C
 2. Has minimal dependencies 
 3. Is a fully integrated solution/stack driver + transport + application layers
 
@@ -26,7 +26,6 @@ Full working code set that...
 * MAC
 * PEAK PCAN
   
-
 
 ## Credits
 
