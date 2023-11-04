@@ -121,8 +121,7 @@ int server_listen(void) {
         sscanf(buffer, "%[^;];%s", command, args);
 
         // Dispatch to appropriate handler based on command
-        if (strcmp(command, "AUTH") == 0) {
-        } 
+        if (strcmp(command, "AUTH") == 0) {} 
         else if (strcmp(command, "QUERY") == 0) {
             char res[32];
             strcpy(res, process_query(args));

@@ -2,7 +2,7 @@
 
 ![](assets/)
 
-### Goal 💥
+### Goal
 Full working code set that... 
 
 1. Works on hardware, Full C
@@ -10,7 +10,7 @@ Full working code set that...
 3. Is a fully integrated solution/stack driver + transport + application layers
 
 
-### Features  🚀
+### Features
 1. Transport Layer
 2. Application Layer
 3. Drivers for Desktop and HW
